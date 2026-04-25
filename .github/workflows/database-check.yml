@@ -1,0 +1,99 @@
+name: Database Check
+
+run-name: Check database from ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  preflight:
+    name: Database check preflight
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    outputs:
+      database_url_available: ${{ steps.secret_check.outputs.database_url_available }}
+
+    steps:
+      - name: Check database secret availability
+        id: secret_check
+        run: |
+          set -euo pipefail
+
+          if [[ -n "${DATABASE_URL}" ]]; then
+            echo "database_url_available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "database_url_available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Fail manual run without secret
+        if: github.event_name == 'workflow_dispatch' && steps.secret_check.outputs.database_url_available != 'true'
+        run: |
+          set -euo pipefail
+          echo "::error title=Missing DATABASE_URL secret::Add the GitHub repository secret DATABASE_URL before running this workflow."
+          exit 1
+
+      - name: Write skip summary
+        if: github.event_name == 'push' && steps.secret_check.outputs.database_url_available != 'true'
+        run: |
+          {
+            echo "## Database check skipped"
+            echo ""
+            echo "- Ref: \`${GITHUB_REF_NAME}\`"
+            echo "- Reason: GitHub repository secret \`DATABASE_URL\` is not configured yet."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  connectivity:
+    name: Supabase Postgres connectivity
+    needs: preflight
+    if: needs.preflight.outputs.database_url_available == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PGCONNECT_TIMEOUT: 10
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes postgresql-client
+
+      - name: Check database connectivity
+        run: |
+          set -euo pipefail
+          psql "$DATABASE_URL" --no-psqlrc --set ON_ERROR_STOP=1 --command "select current_database(), current_user, now();"
+
+      - name: Write success summary
+        if: success()
+        run: |
+          set -euo pipefail
+
+          db_host="$(node -e 'const value = process.env.DATABASE_URL; const host = value ? new URL(value).hostname : "unknown"; console.log(host);')"
+
+          {
+            echo "## Database check succeeded"
+            echo ""
+            echo "- Ref: \`${GITHUB_REF_NAME}\`"
+            echo "- Host: \`${db_host}\`"
+            echo "- Triggered by: \`${GITHUB_ACTOR}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write failure summary
+        if: failure()
+        run: |
+          {
+            echo "## Database check failed"
+            echo ""
+            echo "- Ref: \`${GITHUB_REF_NAME}\`"
+            echo "- Ensure the GitHub repository secret \`DATABASE_URL\` is present and valid."
+            echo "- Check the failed workflow logs for the exact connection error."
+          } >> "$GITHUB_STEP_SUMMARY"

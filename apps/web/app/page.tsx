@@ -12,7 +12,8 @@ export default async function HomePage() {
   if (supabase) {
     const { data, error } = await supabase
       .from("confessions")
-      .select("id, user_id, text, mood, created_at")
+      .select("id, user_id, text, mood, is_private, created_at")
+      .eq("is_private", false)
       .order("created_at", { ascending: false })
       .limit(100);
 

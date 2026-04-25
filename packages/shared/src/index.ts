@@ -16,6 +16,7 @@ export type Confession = {
   userId: string;
   text: string;
   mood: Mood | null;
+  isPrivate: boolean;
   createdAt: string;
   source?: "local" | "supabase";
 };
@@ -24,6 +25,7 @@ export type ConfessionDraft = {
   userId: string;
   text: string;
   mood: Mood | null;
+  isPrivate: boolean;
 };
 
 export type ConfessionRow = {
@@ -31,6 +33,7 @@ export type ConfessionRow = {
   user_id: string;
   text: string;
   mood: string | null;
+  is_private: boolean | null;
   created_at: string;
 };
 
@@ -105,8 +108,9 @@ export function formatConfessionDate(createdAt: string): string {
 
 export function buildConfessionShareText(confession: Confession): string {
   const mood = confession.mood ? `Mood: ${confession.mood}\n` : "";
+  const privacy = confession.isPrivate ? "Private confession\n" : "";
 
-  return `${confession.text}\n\n${mood}Shared from Noface.`;
+  return `${confession.text}\n\n${privacy}${mood}Shared from Noface.`;
 }
 
 export function buildConfessionShareFileName(confession: Confession): string {
@@ -148,6 +152,7 @@ export function fromRow(row: ConfessionRow): Confession {
     userId: row.user_id,
     text: row.text,
     mood: normalizeMood(row.mood),
+    isPrivate: Boolean(row.is_private),
     createdAt: row.created_at,
     source: "supabase"
   };
@@ -159,6 +164,7 @@ export function toRow(confession: Confession): ConfessionRow {
     user_id: confession.userId,
     text: confession.text,
     mood: confession.mood,
+    is_private: confession.isPrivate,
     created_at: confession.createdAt
   };
 }
@@ -169,6 +175,7 @@ export const DEMO_CONFESSIONS: Confession[] = [
     userId: "anon-demo",
     text: "I keep pretending I am fine at work because I do not want anyone to think I am falling behind.",
     mood: "anxious",
+    isPrivate: false,
     createdAt: "2026-04-24T23:42:00.000Z",
     source: "local"
   },
@@ -177,6 +184,7 @@ export const DEMO_CONFESSIONS: Confession[] = [
     userId: "anon-demo",
     text: "Today was the first day in months that I felt genuinely hopeful about starting over.",
     mood: "hopeful",
+    isPrivate: false,
     createdAt: "2026-04-24T21:10:00.000Z",
     source: "local"
   },
@@ -185,6 +193,7 @@ export const DEMO_CONFESSIONS: Confession[] = [
     userId: "anon-demo",
     text: "I still replay one conversation from years ago and wish I had said the kinder thing.",
     mood: "regret",
+    isPrivate: false,
     createdAt: "2026-04-24T18:05:00.000Z",
     source: "local"
   }

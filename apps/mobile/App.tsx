@@ -10,6 +10,7 @@ import {
   ScrollView,
   StatusBar,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   View
@@ -45,6 +46,7 @@ export default function App() {
   const [mine, setMine] = useState<Confession[]>([]);
   const [text, setText] = useState("");
   const [selectedMood, setSelectedMood] = useState<Mood | "">("");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -107,15 +109,17 @@ export default function App() {
       const created = await publishConfession({
         userId,
         text,
-        mood: selectedMood || null
+        mood: selectedMood || null,
+        isPrivate
       });
 
-      setFeed((current) => [created, ...current]);
+      setFeed((current) => (created.isPrivate ? current : [created, ...current]));
       setMine((current) => [created, ...current]);
       setVisibleCount((current) => Math.max(PAGE_SIZE, current));
       setText("");
       setSelectedMood("");
-      setStatusMessage("Confession posted.");
+      setIsPrivate(false);
+      setStatusMessage(created.isPrivate ? "Private confession saved." : "Confession posted.");
       setViewMode("feed");
     } catch (error) {
       console.error(error);
@@ -200,7 +204,10 @@ export default function App() {
       <View style={styles.card}>
         <View style={styles.cardMeta}>
           <Text style={styles.metaText}>{formatConfessionDate(item.createdAt)}</Text>
-          {item.mood ? <Text style={styles.pill}>{item.mood}</Text> : null}
+          <View style={styles.cardBadges}>
+            {item.isPrivate ? <Text style={styles.privatePill}>private</Text> : null}
+            {item.mood ? <Text style={styles.pill}>{item.mood}</Text> : null}
+          </View>
         </View>
         <Text style={styles.cardText}>{item.text}</Text>
         <Pressable onPress={() => void handleShareConfession(item)} style={styles.shareButton}>
@@ -318,6 +325,16 @@ export default function App() {
                 </Pressable>
               ))}
             </ScrollView>
+
+            <View style={styles.privateRow}>
+              <View style={styles.privateCopy}>
+                <Text style={styles.privateLabel}>Private confession</Text>
+                <Text style={styles.privateHint}>
+                  Keep this out of the public feed and store it only in My Confessions.
+                </Text>
+              </View>
+              <Switch onValueChange={setIsPrivate} value={isPrivate} />
+            </View>
 
             <Text style={styles.helperText}>{text.trim().length}/{MAX_CONFESSION_LENGTH} characters</Text>
             {statusMessage ? <Text style={styles.statusText}>{statusMessage}</Text> : null}
@@ -501,6 +518,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     gap: 12
   },
+  cardBadges: {
+    flexDirection: "row",
+    gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "flex-end"
+  },
   metaText: {
     color: "#6b6d76",
     fontSize: 12
@@ -513,6 +536,15 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     overflow: "hidden",
     textTransform: "capitalize"
+  },
+  privatePill: {
+    color: "#17202a",
+    backgroundColor: "rgba(23,32,42,0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    overflow: "hidden",
+    textTransform: "lowercase"
   },
   cardText: {
     color: "#17202a",
@@ -556,6 +588,26 @@ const styles = StyleSheet.create({
   moodScroller: {
     marginTop: 14,
     marginBottom: 12
+  },
+  privateRow: {
+    marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12
+  },
+  privateCopy: {
+    flex: 1
+  },
+  privateLabel: {
+    color: "#17202a",
+    fontSize: 15,
+    fontWeight: "600"
+  },
+  privateHint: {
+    marginTop: 4,
+    color: "#566573",
+    lineHeight: 20
   },
   moodChip: {
     marginRight: 10,

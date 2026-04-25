@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Sharing from "expo-sharing";
 import {
+  Alert,
   FlatList,
   Platform,
   Pressable,
@@ -24,6 +25,8 @@ import {
   validateConfession
 } from "@noface/shared";
 import {
+  canDeleteMyConfessions,
+  deleteMyConfession,
   isSupabaseConfigured,
   loadFeed,
   loadMyConfessions,
@@ -50,6 +53,7 @@ export default function App() {
   const shareCardRef = useRef<View>(null);
 
   const isDemoMode = useMemo(() => !isSupabaseConfigured(), []);
+  const canDelete = useMemo(() => canDeleteMyConfessions(), []);
 
   useEffect(() => {
     let isActive = true;
@@ -152,6 +156,41 @@ export default function App() {
     } catch (error) {
       console.error(error);
       setErrorMessage("Unable to share right now.");
+      setStatusMessage(null);
+    }
+  }
+
+  function handleDeleteConfession(confession: Confession) {
+    if (!canDelete) {
+      setErrorMessage("Delete is only available in demo mode right now.");
+      return;
+    }
+
+    Alert.alert("Delete confession", "Delete this confession from your device?", [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          void confirmDeleteConfession(confession);
+        }
+      }
+    ]);
+  }
+
+  async function confirmDeleteConfession(confession: Confession) {
+    try {
+      await deleteMyConfession(confession.id, confession.userId);
+      setMine((current) => current.filter((item) => item.id !== confession.id));
+      setFeed((current) => current.filter((item) => item.id !== confession.id));
+      setStatusMessage("Confession deleted.");
+      setErrorMessage(null);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Unable to delete this confession right now.");
       setStatusMessage(null);
     }
   }
@@ -291,18 +330,41 @@ export default function App() {
         ) : null}
 
         {viewMode === "mine" ? (
-          <FlatList
-            contentContainerStyle={styles.listContent}
-            data={mine}
-            keyExtractor={(item) => item.id}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>Nothing posted yet from this device.</Text>
-              </View>
-            }
-            renderItem={renderCard}
-            showsVerticalScrollIndicator={false}
-          />
+          <View style={styles.minePane}>
+            {!canDelete ? (
+              <Text style={styles.modeBanner}>
+                Delete stays disabled in live mode until trusted identity exists.
+              </Text>
+            ) : null}
+            <FlatList
+              contentContainerStyle={styles.listContent}
+              data={mine}
+              keyExtractor={(item) => item.id}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>Nothing posted yet from this device.</Text>
+                </View>
+              }
+              renderItem={({ item }) => (
+                <View style={styles.card}>
+                  <View style={styles.cardMeta}>
+                    <Text style={styles.metaText}>{formatConfessionDate(item.createdAt)}</Text>
+                    {item.mood ? <Text style={styles.pill}>{item.mood}</Text> : null}
+                  </View>
+                  <Text style={styles.cardText}>{item.text}</Text>
+                  <View style={styles.cardActionRow}>
+                    <Pressable onPress={() => void handleShareConfession(item)} style={styles.shareButton}>
+                      <Text style={styles.shareButtonText}>Share card</Text>
+                    </Pressable>
+                    <Pressable onPress={() => handleDeleteConfession(item)} style={styles.deleteButton}>
+                      <Text style={styles.deleteButtonText}>Delete</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
         ) : null}
 
         <View pointerEvents="none" style={styles.hiddenShareCanvas}>
@@ -425,6 +487,9 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     gap: 12
   },
+  minePane: {
+    flex: 1
+  },
   card: {
     padding: 16,
     borderRadius: 22,
@@ -542,6 +607,23 @@ const styles = StyleSheet.create({
     backgroundColor: "#17202a"
   },
   shareButtonText: {
+    color: "#ffffff",
+    fontWeight: "600"
+  },
+  cardActionRow: {
+    flexDirection: "row",
+    gap: 10,
+    flexWrap: "wrap",
+    marginTop: 14
+  },
+  deleteButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: "#9f3b2f"
+  },
+  deleteButtonText: {
     color: "#ffffff",
     fontWeight: "600"
   },

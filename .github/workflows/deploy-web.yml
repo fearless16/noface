@@ -70,21 +70,12 @@ jobs:
       - name: Validate workspace before deploy
         run: corepack pnpm validate
 
-      - name: Pull Vercel environment
-        working-directory: apps/web
-        run: corepack pnpm dlx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
-
-      - name: Build web app for Vercel
-        working-directory: apps/web
-        run: corepack pnpm dlx vercel build --prod --token="$VERCEL_TOKEN"
-
-      - name: Deploy prebuilt output to Vercel
+      - name: Deploy web to Vercel
         id: deploy
-        working-directory: apps/web
         run: |
           set -euo pipefail
 
-          deploy_json="$(corepack pnpm dlx vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN" --format=json)"
+          deploy_json="$(corepack pnpm dlx vercel deploy --prod --yes --token="$VERCEL_TOKEN" --format=json)"
           printf '%s' "$deploy_json" > deploy-result.json
 
           deployment_url="$(printf '%s' "$deploy_json" | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { const result = JSON.parse(input); const url = result.url; if (!url) { process.exit(1); } console.log(url.startsWith("http") ? url : `https://${url}`); });')"

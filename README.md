@@ -89,6 +89,23 @@ pnpm validate
    - `VERCEL_ORG_ID`
    - `VERCEL_PROJECT_ID`
 - The workflow builds and deploys the Next.js app from `apps/web`
+- The workflow can be run manually from GitHub Actions with one click via `Run workflow`
+- The workflow now reports deployment success or failure in the GitHub job summary and exposes the deployed URL when successful
+
+GitHub one-click deployment flow:
+
+1. Open the `Deploy Web` workflow in GitHub Actions.
+2. Click `Run workflow`.
+3. Wait for the `Vercel production deploy` job to finish.
+4. Read the job summary for the deployment URL and final status.
+
+Pipeline behavior:
+
+- fails immediately if `VERCEL_TOKEN`, `VERCEL_ORG_ID`, or `VERCEL_PROJECT_ID` are missing
+- runs `pnpm validate` before deployment
+- deploys the prebuilt Vercel output to production
+- performs a post-deploy HTTP health check against the deployed site
+- writes a concise success or failure summary into the workflow run
 
 Manual web setup:
 

@@ -8,6 +8,7 @@ import {
   buildConfessionShareText,
   type Confession,
   createDefaultFeedFilters,
+  FEED_PAGE_FETCH_SIZE,
   type FeedFilter,
   type FeedFilters,
   formatConfessionDate,
@@ -22,7 +23,7 @@ import {
   canDeleteMyConfessions,
   deleteMyConfession,
   isSupabaseConfigured,
-  loadFeed,
+  loadFeedPage,
   loadMyConfessions,
   publishConfession,
   resolveAnonymousUserId
@@ -52,6 +53,9 @@ export default function HomePageClient({
   const [feedFilters, setFeedFilters] = useState<FeedFilters>(() => createDefaultFeedFilters());
   const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [feedOffset, setFeedOffset] = useState(initialFeed.length);
+  const [hasMoreFeed, setHasMoreFeed] = useState(initialFeed.length === FEED_PAGE_FETCH_SIZE);
+  const [isLoadingFeedPage, setIsLoadingFeedPage] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
@@ -62,6 +66,32 @@ export default function HomePageClient({
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
   const visibleFeed = filteredFeed.slice(0, visibleCount);
+
+  async function loadNextFeedPage() {
+    if (isLoadingFeedPage || !hasMoreFeed) {
+      return;
+    }
+
+    try {
+      setIsLoadingFeedPage(true);
+
+      const nextPage = await loadFeedPage({ offset: feedOffset });
+
+      setFeed((current) => {
+        const existingIds = new Set(current.map((item) => item.id));
+        const uniqueNextPage = nextPage.filter((item) => !existingIds.has(item.id));
+
+        return [...current, ...uniqueNextPage];
+      });
+      setFeedOffset((current) => current + nextPage.length);
+      setHasMoreFeed(nextPage.length === FEED_PAGE_FETCH_SIZE);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Unable to load more confessions right now.");
+    } finally {
+      setIsLoadingFeedPage(false);
+    }
+  }
 
   useEffect(() => {
     let isActive = true;
@@ -75,8 +105,9 @@ export default function HomePageClient({
 
       setUserId(anonymousUserId);
 
+      const nextFeedPromise = initialFeed.length > 0 ? Promise.resolve(initialFeed) : loadFeedPage();
       const [nextFeed, nextMine] = await Promise.all([
-        loadFeed(),
+        nextFeedPromise,
         loadMyConfessions(anonymousUserId)
       ]);
 
@@ -85,6 +116,8 @@ export default function HomePageClient({
       }
 
       setFeed(nextFeed);
+      setFeedOffset(nextFeed.length);
+      setHasMoreFeed(nextFeed.length === FEED_PAGE_FETCH_SIZE);
       setMine(nextMine);
     }
 
@@ -98,7 +131,7 @@ export default function HomePageClient({
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [initialFeed]);
 
   useEffect(() => {
     if (currentView !== "feed") {
@@ -121,6 +154,10 @@ export default function HomePageClient({
 
         setVisibleCount((current) => {
           if (current >= filteredFeed.length) {
+            if (hasMoreFeed && !isLoadingFeedPage) {
+              void loadNextFeedPage();
+            }
+
             return current;
           }
 
@@ -132,7 +169,23 @@ export default function HomePageClient({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [currentView, filteredFeed.length]);
+  }, [currentView, filteredFeed.length, hasMoreFeed, isLoadingFeedPage]);
+
+  useEffect(() => {
+    if (currentView !== "feed") {
+      return;
+    }
+
+    if (!hasMoreFeed || isLoadingFeedPage) {
+      return;
+    }
+
+    if (visibleCount < filteredFeed.length || filteredFeed.length >= PAGE_SIZE) {
+      return;
+    }
+
+    void loadNextFeedPage();
+  }, [currentView, filteredFeed.length, hasMoreFeed, isLoadingFeedPage, visibleCount]);
 
   async function handlePublish() {
     const validationError = validateConfession(text);
@@ -160,6 +213,9 @@ export default function HomePageClient({
 
       setFeed((current) => (created.isPrivate ? current : [created, ...current]));
       setMine((current) => [created, ...current]);
+      if (!created.isPrivate) {
+        setFeedOffset((current) => current + 1);
+      }
       setVisibleCount((current) => Math.max(PAGE_SIZE, current));
       setText("");
       setSelectedMood("");
@@ -298,7 +354,7 @@ export default function HomePageClient({
           </article>
           <article className="metric">
             <span>Feed items</span>
-            <strong>{filteredFeed.length}</strong>
+            <strong>{hasMoreFeed ? `${filteredFeed.length}+` : filteredFeed.length}</strong>
           </article>
           <article className="metric">
             <span>My confessions</span>
@@ -441,6 +497,7 @@ export default function HomePageClient({
             ) : null}
 
             <div aria-hidden className="sentinel" ref={sentinelRef} />
+            {isLoadingFeedPage ? <div className="empty">Loading more confessions...</div> : null}
           </div>
         </section>
       ) : null}

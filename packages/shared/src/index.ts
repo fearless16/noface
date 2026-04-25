@@ -1,4 +1,5 @@
 export const MAX_CONFESSION_LENGTH = 500;
+export const FEED_PAGE_FETCH_SIZE = 100;
 
 export const MOODS = [
   "sad",

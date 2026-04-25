@@ -2,6 +2,7 @@ import {
   type Confession,
   type ConfessionDraft,
   DEMO_CONFESSIONS,
+  FEED_PAGE_FETCH_SIZE,
   STORAGE_KEYS,
   createAnonymousUserId,
   fromRow,
@@ -74,14 +75,22 @@ export async function resolveAnonymousUserId(): Promise<string> {
   return nextUserId;
 }
 
-export async function loadFeed(): Promise<Confession[]> {
+type LoadFeedPageOptions = {
+  offset?: number;
+  limit?: number;
+};
+
+export async function loadFeedPage({
+  offset = 0,
+  limit = FEED_PAGE_FETCH_SIZE
+}: LoadFeedPageOptions = {}): Promise<Confession[]> {
   if (supabase) {
     const { data, error } = await supabase
       .from("confessions")
       .select("id, user_id, text, mood, is_private, created_at")
       .eq("is_private", false)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .range(offset, offset + limit - 1);
 
     if (error) {
       throw error;
@@ -90,7 +99,7 @@ export async function loadFeed(): Promise<Confession[]> {
     return (data ?? []).map(fromRow);
   }
 
-  return readPublicLocalConfessions();
+  return readPublicLocalConfessions().slice(offset, offset + limit);
 }
 
 export async function loadMyConfessions(userId: string): Promise<Confession[]> {

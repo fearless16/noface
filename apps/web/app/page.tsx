@@ -1,4 +1,4 @@
-import { type Confession, fromRow } from "@noface/shared";
+import { FEED_PAGE_FETCH_SIZE, type Confession, fromRow } from "@noface/shared";
 import { cookies } from "next/headers";
 import HomePageClient from "./home-page-client";
 import { createClient } from "../utils/supabase/server";
@@ -15,7 +15,7 @@ export default async function HomePage() {
       .select("id, user_id, text, mood, is_private, created_at")
       .eq("is_private", false)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .range(0, FEED_PAGE_FETCH_SIZE - 1);
 
     if (error) {
       console.error(error);

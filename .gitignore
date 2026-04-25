@@ -10,3 +10,5 @@ coverage
 apps/web/.env.local
 apps/mobile/.env
 apps/web/.vercel
+.vercel
+.env*.local

@@ -21,6 +21,7 @@ import {
   buildConfessionShareText,
   type Confession,
   createDefaultFeedFilters,
+  FEED_PAGE_FETCH_SIZE,
   type FeedFilter,
   type FeedFilters,
   formatConfessionDate,
@@ -35,7 +36,7 @@ import {
   canDeleteMyConfessions,
   deleteMyConfession,
   isSupabaseConfigured,
-  loadFeed,
+  loadFeedPage,
   loadMyConfessions,
   publishConfession,
   resolveAnonymousUserId
@@ -57,6 +58,9 @@ export default function App() {
   const [feedFilters, setFeedFilters] = useState<FeedFilters>(() => createDefaultFeedFilters());
   const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [feedOffset, setFeedOffset] = useState(0);
+  const [hasMoreFeed, setHasMoreFeed] = useState(true);
+  const [isLoadingFeedPage, setIsLoadingFeedPage] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -67,13 +71,40 @@ export default function App() {
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
 
+  async function loadNextFeedPage() {
+    if (isLoadingFeedPage || !hasMoreFeed) {
+      return;
+    }
+
+    try {
+      setIsLoadingFeedPage(true);
+
+      const nextPage = await loadFeedPage({ offset: feedOffset });
+
+      setFeed((current) => {
+        const existingIds = new Set(current.map((item) => item.id));
+        const uniqueNextPage = nextPage.filter((item) => !existingIds.has(item.id));
+
+        return [...current, ...uniqueNextPage];
+      });
+      setFeedOffset((current) => current + nextPage.length);
+      setHasMoreFeed(nextPage.length === FEED_PAGE_FETCH_SIZE);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Unable to load more confessions.");
+      setStatusMessage(null);
+    } finally {
+      setIsLoadingFeedPage(false);
+    }
+  }
+
   useEffect(() => {
     let isActive = true;
 
     async function bootstrap() {
       const anonymousUserId = await resolveAnonymousUserId();
       const [nextFeed, nextMine] = await Promise.all([
-        loadFeed(),
+        loadFeedPage(),
         loadMyConfessions(anonymousUserId)
       ]);
 
@@ -83,6 +114,8 @@ export default function App() {
 
       setUserId(anonymousUserId);
       setFeed(nextFeed);
+      setFeedOffset(nextFeed.length);
+      setHasMoreFeed(nextFeed.length === FEED_PAGE_FETCH_SIZE);
       setMine(nextMine);
     }
 
@@ -97,6 +130,22 @@ export default function App() {
       isActive = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (viewMode !== "feed") {
+      return;
+    }
+
+    if (!hasMoreFeed || isLoadingFeedPage) {
+      return;
+    }
+
+    if (visibleCount < filteredFeed.length || filteredFeed.length >= PAGE_SIZE) {
+      return;
+    }
+
+    void loadNextFeedPage();
+  }, [filteredFeed.length, hasMoreFeed, isLoadingFeedPage, viewMode, visibleCount]);
 
   async function handlePublish() {
     const validationError = validateConfession(text);
@@ -125,6 +174,9 @@ export default function App() {
 
       setFeed((current) => (created.isPrivate ? current : [created, ...current]));
       setMine((current) => [created, ...current]);
+      if (!created.isPrivate) {
+        setFeedOffset((current) => current + 1);
+      }
       setVisibleCount((current) => Math.max(PAGE_SIZE, current));
       setText("");
       setSelectedMood("");
@@ -280,7 +332,7 @@ export default function App() {
             </View>
             <View style={styles.metricCard}>
               <Text style={styles.metricLabel}>Feed</Text>
-              <Text style={styles.metricValue}>{filteredFeed.length}</Text>
+              <Text style={styles.metricValue}>{hasMoreFeed ? `${filteredFeed.length}+` : filteredFeed.length}</Text>
             </View>
             <View style={styles.metricCard}>
               <Text style={styles.metricLabel}>Mine</Text>
@@ -437,9 +489,17 @@ export default function App() {
                 </View>
               }
               onEndReached={() => {
-                setVisibleCount((current) => Math.min(current + PAGE_SIZE, filteredFeed.length));
+                if (visibleCount < filteredFeed.length) {
+                  setVisibleCount((current) => Math.min(current + PAGE_SIZE, filteredFeed.length));
+                  return;
+                }
+
+                void loadNextFeedPage();
               }}
               onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                isLoadingFeedPage ? <Text style={styles.filterNote}>Loading more confessions...</Text> : null
+              }
               renderItem={renderCard}
               showsVerticalScrollIndicator={false}
             />

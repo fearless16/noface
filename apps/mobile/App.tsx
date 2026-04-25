@@ -17,9 +17,15 @@ import {
 } from "react-native";
 import { captureRef } from "react-native-view-shot";
 import {
+  applyFeedFilters,
   buildConfessionShareText,
   type Confession,
+  createDefaultFeedFilters,
+  type FeedFilter,
+  type FeedFilters,
   formatConfessionDate,
+  getFeedFilterLabel,
+  isPremiumFeedFilter,
   type Mood,
   MAX_CONFESSION_LENGTH,
   MOODS,
@@ -38,6 +44,7 @@ import {
 type ViewMode = "feed" | "write" | "mine";
 
 const PAGE_SIZE = 8;
+const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
 
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>("feed");
@@ -47,6 +54,8 @@ export default function App() {
   const [text, setText] = useState("");
   const [selectedMood, setSelectedMood] = useState<Mood | "">("");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [feedFilters, setFeedFilters] = useState<FeedFilters>(() => createDefaultFeedFilters());
+  const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -56,6 +65,7 @@ export default function App() {
 
   const isDemoMode = useMemo(() => !isSupabaseConfigured(), []);
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
+  const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
 
   useEffect(() => {
     let isActive = true;
@@ -199,6 +209,40 @@ export default function App() {
     }
   }
 
+  function handleFeedFilterSelect(filter: FeedFilter) {
+    if (isPremiumFeedFilter(filter) && !isPremiumPreviewEnabled) {
+      return;
+    }
+
+    setFeedFilters((current) => ({
+      ...current,
+      filter
+    }));
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function handleMoodFilterSelect(mood: Mood | "all") {
+    setFeedFilters((current) => ({
+      ...current,
+      filter: "mood",
+      mood
+    }));
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function handlePremiumPreviewToggle() {
+    setIsPremiumPreviewEnabled((current) => {
+      const next = !current;
+
+      if (!next) {
+        setFeedFilters(createDefaultFeedFilters());
+      }
+
+      return next;
+    });
+    setVisibleCount(PAGE_SIZE);
+  }
+
   function renderCard({ item }: { item: Confession }) {
     return (
       <View style={styles.card}>
@@ -217,7 +261,7 @@ export default function App() {
     );
   }
 
-  const visibleFeed = feed.slice(0, visibleCount);
+  const visibleFeed = filteredFeed.slice(0, visibleCount);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -236,7 +280,7 @@ export default function App() {
             </View>
             <View style={styles.metricCard}>
               <Text style={styles.metricLabel}>Feed</Text>
-              <Text style={styles.metricValue}>{feed.length}</Text>
+              <Text style={styles.metricValue}>{filteredFeed.length}</Text>
             </View>
             <View style={styles.metricCard}>
               <Text style={styles.metricLabel}>Mine</Text>
@@ -270,22 +314,136 @@ export default function App() {
         </View>
 
         {viewMode === "feed" ? (
-          <FlatList
-            contentContainerStyle={styles.listContent}
-            data={visibleFeed}
-            keyExtractor={(item) => item.id}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No confessions yet. Write the first one.</Text>
+          <View style={styles.feedPane}>
+            <View style={styles.feedHeader}>
+              <View style={styles.feedHeaderCopy}>
+                <Text style={styles.sectionTitle}>Today&apos;s confessions</Text>
+                <Text style={styles.sectionSubtitle}>
+                  Public feed only, with premium filters for mood and reading length.
+                </Text>
               </View>
-            }
-            onEndReached={() => {
-              setVisibleCount((current) => Math.min(current + PAGE_SIZE, feed.length));
-            }}
-            onEndReachedThreshold={0.5}
-            renderItem={renderCard}
-            showsVerticalScrollIndicator={false}
-          />
+              <Pressable onPress={() => setViewMode("write")} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>Write now</Text>
+              </Pressable>
+            </View>
+
+            <View style={styles.filterPanel}>
+              <Text style={styles.filterEyebrow}>premium filters</Text>
+              <Text style={styles.filterTitle}>Shape the public feed</Text>
+              <Text style={styles.filterCopy}>
+                Refine by mood or reading length. Private confessions remain excluded.
+              </Text>
+              <Pressable onPress={handlePremiumPreviewToggle} style={styles.secondaryButton}>
+                <Text style={styles.secondaryButtonText}>
+                  {isPremiumPreviewEnabled ? "Lock preview" : "Unlock premium preview"}
+                </Text>
+              </Pressable>
+            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.filterScroller}
+            >
+              {FEED_FILTER_OPTIONS.map((filter) => {
+                const isDisabled = isPremiumFeedFilter(filter) && !isPremiumPreviewEnabled;
+
+                return (
+                  <Pressable
+                    key={filter}
+                    disabled={isDisabled}
+                    onPress={() => handleFeedFilterSelect(filter)}
+                    style={[
+                      styles.filterChip,
+                      feedFilters.filter === filter ? styles.activeFilterChip : null,
+                      isDisabled ? styles.disabledFilterChip : null
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        feedFilters.filter === filter ? styles.activeFilterChipText : null
+                      ]}
+                    >
+                      {getFeedFilterLabel(filter)}
+                      {isPremiumFeedFilter(filter) ? " Premium" : ""}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            {feedFilters.filter === "mood" && isPremiumPreviewEnabled ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                style={styles.filterScroller}
+              >
+                <Pressable
+                  onPress={() => handleMoodFilterSelect("all")}
+                  style={[
+                    styles.filterChip,
+                    feedFilters.mood === "all" ? styles.activeFilterChip : null
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      feedFilters.mood === "all" ? styles.activeFilterChipText : null
+                    ]}
+                  >
+                    All moods
+                  </Text>
+                </Pressable>
+                {MOODS.map((mood) => (
+                  <Pressable
+                    key={mood}
+                    onPress={() => handleMoodFilterSelect(mood)}
+                    style={[
+                      styles.filterChip,
+                      feedFilters.mood === mood ? styles.activeFilterChip : null
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        feedFilters.mood === mood ? styles.activeFilterChipText : null
+                      ]}
+                    >
+                      {mood}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            ) : null}
+
+            <Text style={styles.filterNote}>
+              {isPremiumPreviewEnabled
+                ? `Preview unlocked. Currently showing ${getFeedFilterLabel(feedFilters.filter).toLowerCase()}.`
+                : "Premium filters stay locked until you unlock the local preview on this device."}
+            </Text>
+
+            <FlatList
+              contentContainerStyle={styles.listContent}
+              data={visibleFeed}
+              keyExtractor={(item) => item.id}
+              ListEmptyComponent={
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>
+                    {filteredFeed.length === 0 && feed.length > 0
+                      ? "No public confessions match this filter yet."
+                      : "No confessions yet. Write the first one."}
+                  </Text>
+                </View>
+              }
+              onEndReached={() => {
+                setVisibleCount((current) => Math.min(current + PAGE_SIZE, filteredFeed.length));
+              }}
+              onEndReachedThreshold={0.5}
+              renderItem={renderCard}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
         ) : null}
 
         {viewMode === "write" ? (
@@ -504,6 +662,16 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     gap: 12
   },
+  feedPane: {
+    flex: 1
+  },
+  feedHeader: {
+    marginBottom: 14,
+    gap: 12
+  },
+  feedHeaderCopy: {
+    gap: 8
+  },
   minePane: {
     flex: 1
   },
@@ -576,6 +744,57 @@ const styles = StyleSheet.create({
     color: "#566573",
     lineHeight: 22
   },
+  filterPanel: {
+    marginBottom: 12,
+    padding: 16,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.84)",
+    gap: 8
+  },
+  filterEyebrow: {
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 2,
+    color: "#6b6d76"
+  },
+  filterTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#17202a"
+  },
+  filterCopy: {
+    color: "#566573",
+    lineHeight: 22
+  },
+  filterScroller: {
+    marginBottom: 10
+  },
+  filterChip: {
+    marginRight: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.9)"
+  },
+  activeFilterChip: {
+    backgroundColor: "#17202a"
+  },
+  disabledFilterChip: {
+    opacity: 0.45
+  },
+  filterChipText: {
+    color: "#17202a",
+    fontWeight: "600"
+  },
+  activeFilterChipText: {
+    color: "#ffffff"
+  },
+  filterNote: {
+    marginBottom: 12,
+    color: "#566573",
+    fontSize: 13,
+    lineHeight: 20
+  },
   textArea: {
     minHeight: 180,
     padding: 16,
@@ -645,9 +864,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#17202a",
     alignItems: "center"
   },
+  secondaryButton: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.92)"
+  },
   primaryButtonText: {
     color: "#ffffff",
     fontSize: 15,
+    fontWeight: "600"
+  },
+  secondaryButtonText: {
+    color: "#17202a",
     fontWeight: "600"
   },
   shareButton: {

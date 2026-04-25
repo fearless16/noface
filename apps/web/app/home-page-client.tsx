@@ -2,11 +2,17 @@
 
 import { type FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
+  applyFeedFilters,
   buildConfessionShareCardSvg,
   buildConfessionShareFileName,
   buildConfessionShareText,
   type Confession,
+  createDefaultFeedFilters,
+  type FeedFilter,
+  type FeedFilters,
   formatConfessionDate,
+  getFeedFilterLabel,
+  isPremiumFeedFilter,
   type Mood,
   MAX_CONFESSION_LENGTH,
   MOODS,
@@ -30,6 +36,7 @@ type HomePageClientProps = {
 };
 
 const PAGE_SIZE = 8;
+const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
 
 export default function HomePageClient({
   initialFeed,
@@ -42,6 +49,8 @@ export default function HomePageClient({
   const [text, setText] = useState("");
   const [selectedMood, setSelectedMood] = useState<Mood | "">("");
   const [isPrivate, setIsPrivate] = useState(false);
+  const [feedFilters, setFeedFilters] = useState<FeedFilters>(() => createDefaultFeedFilters());
+  const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -51,7 +60,8 @@ export default function HomePageClient({
 
   const isDemoMode = useMemo(() => !hasServerSupabase && !isSupabaseConfigured(), [hasServerSupabase]);
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
-  const visibleFeed = feed.slice(0, visibleCount);
+  const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
+  const visibleFeed = filteredFeed.slice(0, visibleCount);
 
   useEffect(() => {
     let isActive = true;
@@ -110,11 +120,11 @@ export default function HomePageClient({
         }
 
         setVisibleCount((current) => {
-          if (current >= feed.length) {
+          if (current >= filteredFeed.length) {
             return current;
           }
 
-          return Math.min(current + PAGE_SIZE, feed.length);
+          return Math.min(current + PAGE_SIZE, filteredFeed.length);
         });
       },
       { rootMargin: "0px 0px 240px 0px" }
@@ -122,7 +132,7 @@ export default function HomePageClient({
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [currentView, feed.length]);
+  }, [currentView, filteredFeed.length]);
 
   async function handlePublish() {
     const validationError = validateConfession(text);
@@ -236,6 +246,40 @@ export default function HomePageClient({
     }
   }
 
+  function handleFeedFilterSelect(filter: FeedFilter) {
+    if (isPremiumFeedFilter(filter) && !isPremiumPreviewEnabled) {
+      return;
+    }
+
+    setFeedFilters((current) => ({
+      ...current,
+      filter
+    }));
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function handleMoodFilterSelect(mood: Mood | "all") {
+    setFeedFilters((current) => ({
+      ...current,
+      filter: "mood",
+      mood
+    }));
+    setVisibleCount(PAGE_SIZE);
+  }
+
+  function handlePremiumPreviewToggle() {
+    setIsPremiumPreviewEnabled((current) => {
+      const next = !current;
+
+      if (!next) {
+        setFeedFilters(createDefaultFeedFilters());
+      }
+
+      return next;
+    });
+    setVisibleCount(PAGE_SIZE);
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -254,7 +298,7 @@ export default function HomePageClient({
           </article>
           <article className="metric">
             <span>Feed items</span>
-            <strong>{feed.length}</strong>
+            <strong>{filteredFeed.length}</strong>
           </article>
           <article className="metric">
             <span>My confessions</span>
@@ -302,6 +346,71 @@ export default function HomePageClient({
             </button>
           </div>
 
+          <div className="filter-panel">
+            <div>
+              <p className="filter-eyebrow">premium filters</p>
+              <h3>Shape the public feed</h3>
+              <p className="filter-copy">
+                Refine the public feed by mood or reading length. Private confessions stay hidden
+                even when premium filters are enabled.
+              </p>
+            </div>
+            <button className="ghost small" onClick={handlePremiumPreviewToggle} type="button">
+              {isPremiumPreviewEnabled ? "Lock preview" : "Unlock premium preview"}
+            </button>
+          </div>
+
+          <div className="filter-chip-row" aria-label="Feed filters">
+            {FEED_FILTER_OPTIONS.map((filter) => {
+              const isPremium = isPremiumFeedFilter(filter);
+              const isDisabled = isPremium && !isPremiumPreviewEnabled;
+
+              return (
+                <button
+                  key={filter}
+                  aria-pressed={feedFilters.filter === filter}
+                  className={`filter-chip ${feedFilters.filter === filter ? "active" : ""}`}
+                  disabled={isDisabled}
+                  onClick={() => handleFeedFilterSelect(filter)}
+                  type="button"
+                >
+                  {getFeedFilterLabel(filter)}
+                  {isPremium ? " Premium" : ""}
+                </button>
+              );
+            })}
+          </div>
+
+          {feedFilters.filter === "mood" && isPremiumPreviewEnabled ? (
+            <div className="filter-chip-row" aria-label="Mood filters">
+              <button
+                aria-pressed={feedFilters.mood === "all"}
+                className={`filter-chip ${feedFilters.mood === "all" ? "active" : ""}`}
+                onClick={() => handleMoodFilterSelect("all")}
+                type="button"
+              >
+                All moods
+              </button>
+              {MOODS.map((mood) => (
+                <button
+                  key={mood}
+                  aria-pressed={feedFilters.mood === mood}
+                  className={`filter-chip ${feedFilters.mood === mood ? "active" : ""}`}
+                  onClick={() => handleMoodFilterSelect(mood)}
+                  type="button"
+                >
+                  {mood}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <p className="filter-note">
+            {isPremiumPreviewEnabled
+              ? `Preview unlocked. Currently showing ${getFeedFilterLabel(feedFilters.filter).toLowerCase()}.`
+              : "Premium filters stay locked until you unlock the local preview on this device."}
+          </p>
+
           <div className="feed">
             {visibleFeed.map((confession) => (
               <article className="card" key={confession.id}>
@@ -324,7 +433,11 @@ export default function HomePageClient({
             ))}
 
             {!visibleFeed.length ? (
-              <div className="empty">No confessions yet. Be the first one to write today.</div>
+              <div className="empty">
+                {filteredFeed.length === 0 && feed.length > 0
+                  ? "No public confessions match this filter yet."
+                  : "No confessions yet. Be the first one to write today."}
+              </div>
             ) : null}
 
             <div aria-hidden className="sentinel" ref={sentinelRef} />

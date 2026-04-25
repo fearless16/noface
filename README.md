@@ -71,4 +71,5 @@ pnpm typecheck
 - My-confession delete is available in demo mode; live delete stays disabled until trusted identity or restore flows exist.
 - Private confessions can be saved from web and mobile; they stay out of the public feed and remain visible in My Confessions only.
 - Supabase now enforces server-side insert guardrails: blocked links and spam terms, plus a limit of 5 confessions per user in 10 minutes.
-- Premium filters and stronger moderation tooling are left for the next phase.
+- Premium filter preview is now available on web and mobile for the public feed, with mood-match plus short-read and long-read filters.
+- Premium filters are still a local preview only; billing, entitlement sync, and stronger moderation tooling are left for the next phase.

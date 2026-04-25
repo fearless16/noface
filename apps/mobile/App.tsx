@@ -1,8 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as Sharing from "expo-sharing";
 import {
   FlatList,
+  Platform,
   Pressable,
   SafeAreaView,
+  Share,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -10,8 +13,11 @@ import {
   TextInput,
   View
 } from "react-native";
+import { captureRef } from "react-native-view-shot";
 import {
+  buildConfessionShareText,
   type Confession,
+  formatConfessionDate,
   type Mood,
   MAX_CONFESSION_LENGTH,
   MOODS,
@@ -40,6 +46,8 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sharingConfession, setSharingConfession] = useState<Confession | null>(null);
+  const shareCardRef = useRef<View>(null);
 
   const isDemoMode = useMemo(() => !isSupabaseConfigured(), []);
 
@@ -114,14 +122,51 @@ export default function App() {
     }
   }
 
+  async function handleShareConfession(confession: Confession) {
+    const shareText = buildConfessionShareText(confession);
+
+    try {
+      setSharingConfession(confession);
+      await waitForNextFrame();
+
+      if (shareCardRef.current && Platform.OS !== "web" && (await Sharing.isAvailableAsync())) {
+        const uri = await captureRef(shareCardRef, {
+          format: "png",
+          quality: 1,
+          result: "tmpfile"
+        });
+
+        await Sharing.shareAsync(uri, {
+          dialogTitle: "Share confession card",
+          mimeType: "image/png"
+        });
+        setStatusMessage("Confession card shared.");
+        return;
+      }
+
+      await Share.share({
+        message: shareText,
+        title: "Noface confession"
+      });
+      setStatusMessage("Confession shared.");
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Unable to share right now.");
+      setStatusMessage(null);
+    }
+  }
+
   function renderCard({ item }: { item: Confession }) {
     return (
       <View style={styles.card}>
         <View style={styles.cardMeta}>
-          <Text style={styles.metaText}>{formatDate(item.createdAt)}</Text>
+          <Text style={styles.metaText}>{formatConfessionDate(item.createdAt)}</Text>
           {item.mood ? <Text style={styles.pill}>{item.mood}</Text> : null}
         </View>
         <Text style={styles.cardText}>{item.text}</Text>
+        <Pressable onPress={() => void handleShareConfession(item)} style={styles.shareButton}>
+          <Text style={styles.shareButtonText}>Share card</Text>
+        </Pressable>
       </View>
     );
   }
@@ -259,15 +304,27 @@ export default function App() {
             showsVerticalScrollIndicator={false}
           />
         ) : null}
+
+        <View pointerEvents="none" style={styles.hiddenShareCanvas}>
+          <View collapsable={false} ref={shareCardRef} style={styles.shareCardCanvas}>
+            <Text style={styles.shareCardEyebrow}>NOFACE</Text>
+            <Text style={styles.shareCardTitle}>Anonymous confession</Text>
+            <Text style={styles.shareCardDate}>
+              {sharingConfession ? formatConfessionDate(sharingConfession.createdAt) : ""}
+            </Text>
+            <Text style={styles.shareCardBody}>{sharingConfession?.text ?? ""}</Text>
+            {sharingConfession?.mood ? <Text style={styles.shareCardMood}>{sharingConfession.mood}</Text> : null}
+            <Text style={styles.shareCardFooter}>Write freely. Leave no face behind.</Text>
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short"
+function waitForNextFrame(): Promise<void> {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => resolve());
   });
 }
 
@@ -475,5 +532,64 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 15,
     fontWeight: "600"
+  },
+  shareButton: {
+    alignSelf: "flex-start",
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: "#17202a"
+  },
+  shareButtonText: {
+    color: "#ffffff",
+    fontWeight: "600"
+  },
+  hiddenShareCanvas: {
+    position: "absolute",
+    left: -9999,
+    top: -9999,
+    opacity: 0
+  },
+  shareCardCanvas: {
+    width: 1080,
+    minHeight: 1080,
+    padding: 56,
+    backgroundColor: "#fcf6ea",
+    borderRadius: 64,
+    justifyContent: "space-between"
+  },
+  shareCardEyebrow: {
+    fontSize: 26,
+    letterSpacing: 8,
+    color: "#566573"
+  },
+  shareCardTitle: {
+    marginTop: 26,
+    fontSize: 68,
+    fontWeight: "700",
+    color: "#17202a"
+  },
+  shareCardDate: {
+    marginTop: 18,
+    fontSize: 24,
+    color: "#566573"
+  },
+  shareCardBody: {
+    marginTop: 84,
+    fontSize: 44,
+    lineHeight: 64,
+    color: "#17202a"
+  },
+  shareCardMood: {
+    marginTop: 36,
+    fontSize: 30,
+    color: "#8f4b2d",
+    textTransform: "capitalize"
+  },
+  shareCardFooter: {
+    marginTop: 120,
+    fontSize: 24,
+    color: "#566573"
   }
 });

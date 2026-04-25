@@ -67,4 +67,5 @@ pnpm typecheck
 
 - Without env vars, both apps run in local demo mode using seeded sample confessions.
 - The current MVP intentionally excludes comments, likes, replies, and identity features.
+- Feed and my-confession cards can now be shared as downloadable web cards and native mobile share cards.
 - Share-card generation, delete flow, premium filters, and moderation edge functions are left for the next phase.

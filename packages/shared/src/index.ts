@@ -34,6 +34,14 @@ export type ConfessionRow = {
   created_at: string;
 };
 
+type ShareCardPalette = {
+  background: string;
+  border: string;
+  accent: string;
+  text: string;
+  muted: string;
+};
+
 export const STORAGE_KEYS = {
   userId: "noface.user-id",
   confessions: "noface.confessions",
@@ -46,10 +54,9 @@ export function createAnonymousUserId(): string {
       randomUUID?: () => string;
     };
   };
-  const randomUUID = cryptoObject.crypto?.randomUUID;
 
-  if (randomUUID) {
-    return randomUUID();
+  if (cryptoObject.crypto?.randomUUID) {
+    return cryptoObject.crypto.randomUUID();
   }
 
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
@@ -86,6 +93,53 @@ export function sortConfessionsDescending(confessions: Confession[]): Confession
   return [...confessions].sort((left, right) => {
     return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
+}
+
+export function formatConfessionDate(createdAt: string): string {
+  return new Date(createdAt).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  });
+}
+
+export function buildConfessionShareText(confession: Confession): string {
+  const mood = confession.mood ? `Mood: ${confession.mood}\n` : "";
+
+  return `${confession.text}\n\n${mood}Shared from Noface.`;
+}
+
+export function buildConfessionShareFileName(confession: Confession): string {
+  return `noface-confession-${confession.id.slice(0, 8)}.svg`;
+}
+
+export function buildConfessionShareCardSvg(confession: Confession): string {
+  const palette = pickSharePalette(confession.mood);
+  const formattedDate = formatConfessionDate(confession.createdAt);
+  const lines = wrapText(confession.text, 33).slice(0, 7);
+  const lineMarkup = lines
+    .map((line, index) => {
+      return `<tspan x="56" dy="${index === 0 ? 0 : 32}">${escapeSvgText(line)}</tspan>`;
+    })
+    .join("");
+  const moodMarkup = confession.mood
+    ? `<text x="56" y="448" font-size="20" font-family="Avenir Next, Segoe UI, sans-serif" fill="${palette.accent}" text-transform="capitalize">${escapeSvgText(confession.mood)}</text>`
+    : "";
+
+  return [
+    `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080" role="img" aria-label="Noface confession share card">`,
+    `<rect width="1080" height="1080" rx="64" fill="${palette.background}" />`,
+    `<circle cx="980" cy="120" r="180" fill="${palette.accent}" fill-opacity="0.08" />`,
+    `<circle cx="120" cy="960" r="220" fill="${palette.accent}" fill-opacity="0.08" />`,
+    `<rect x="40" y="40" width="1000" height="1000" rx="48" fill="none" stroke="${palette.border}" stroke-width="4" />`,
+    `<text x="56" y="108" font-size="28" letter-spacing="8" font-family="Avenir Next, Segoe UI, sans-serif" fill="${palette.muted}">NOFACE</text>`,
+    `<text x="56" y="178" font-size="76" font-family="Georgia, Times New Roman, serif" fill="${palette.text}">Anonymous confession</text>`,
+    `<text x="56" y="260" font-size="24" font-family="Avenir Next, Segoe UI, sans-serif" fill="${palette.muted}">${escapeSvgText(formattedDate)}</text>`,
+    `<text x="56" y="360" font-size="44" font-family="Avenir Next, Segoe UI, sans-serif" fill="${palette.text}">${lineMarkup}</text>`,
+    moodMarkup,
+    `<text x="56" y="982" font-size="26" font-family="Avenir Next, Segoe UI, sans-serif" fill="${palette.muted}">Write freely. Leave no face behind.</text>`,
+    `</svg>`
+  ].join("");
 }
 
 export function fromRow(row: ConfessionRow): Confession {
@@ -135,3 +189,76 @@ export const DEMO_CONFESSIONS: Confession[] = [
     source: "local"
   }
 ];
+
+function wrapText(text: string, maxLength: number): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let currentLine = "";
+
+  for (const word of words) {
+    const nextLine = currentLine ? `${currentLine} ${word}` : word;
+
+    if (nextLine.length <= maxLength) {
+      currentLine = nextLine;
+      continue;
+    }
+
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+
+    currentLine = word;
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+function escapeSvgText(text: string): string {
+  return text
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function pickSharePalette(mood: Mood | null): ShareCardPalette {
+  switch (mood) {
+    case "happy":
+      return {
+        background: "#fff7d6",
+        border: "#f0c95b",
+        accent: "#d58f00",
+        text: "#2c2414",
+        muted: "#7b6741"
+      };
+    case "sad":
+      return {
+        background: "#eaf2ff",
+        border: "#9eb6e5",
+        accent: "#5379bf",
+        text: "#18253d",
+        muted: "#5b6880"
+      };
+    case "angry":
+      return {
+        background: "#fff0eb",
+        border: "#e3a896",
+        accent: "#c24f2e",
+        text: "#381d16",
+        muted: "#7b5c52"
+      };
+    default:
+      return {
+        background: "#fcf6ea",
+        border: "#decdb0",
+        accent: "#d76a3b",
+        text: "#17202a",
+        muted: "#566573"
+      };
+  }
+}

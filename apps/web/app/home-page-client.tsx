@@ -2,7 +2,11 @@
 
 import { type FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
+  buildConfessionShareCardSvg,
+  buildConfessionShareFileName,
+  buildConfessionShareText,
   type Confession,
+  formatConfessionDate,
   type Mood,
   MAX_CONFESSION_LENGTH,
   MOODS,
@@ -38,6 +42,7 @@ export default function HomePageClient({
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -159,6 +164,46 @@ export default function HomePageClient({
     });
   }
 
+  async function handleShare(confession: Confession) {
+    const shareText = buildConfessionShareText(confession);
+
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({
+          title: "Noface confession",
+          text: shareText
+        });
+        setShareMessage("Confession shared.");
+        return;
+      }
+
+      if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareText);
+        setShareMessage("Confession copied to the clipboard.");
+        return;
+      }
+
+      setShareMessage("Web sharing is not available in this browser.");
+    } catch (error) {
+      console.error(error);
+      setShareMessage("Unable to share right now.");
+    }
+  }
+
+  function handleDownloadCard(confession: Confession) {
+    const svg = buildConfessionShareCardSvg(confession);
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+
+    anchor.href = objectUrl;
+    anchor.download = buildConfessionShareFileName(confession);
+    anchor.click();
+
+    URL.revokeObjectURL(objectUrl);
+    setShareMessage("Share card downloaded.");
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -193,6 +238,7 @@ export default function HomePageClient({
             ? "Running in local demo mode until Supabase credentials are added."
             : "Live mode connected to Supabase."}
         </div>
+        {shareMessage ? <div className="mode-banner">{shareMessage}</div> : null}
       </section>
 
       <nav className="tabs" aria-label="Primary views">
@@ -229,14 +275,19 @@ export default function HomePageClient({
               <article className="card" key={confession.id}>
                 <div className="card-meta">
                   <span>
-                    {new Date(confession.createdAt).toLocaleString([], {
-                      dateStyle: "medium",
-                      timeStyle: "short"
-                    })}
+                    {formatConfessionDate(confession.createdAt)}
                   </span>
                   {confession.mood ? <span className="pill">{confession.mood}</span> : null}
                 </div>
                 <p>{confession.text}</p>
+                <div className="card-actions">
+                  <button className="ghost small" onClick={() => void handleShare(confession)} type="button">
+                    Share
+                  </button>
+                  <button className="ghost small" onClick={() => handleDownloadCard(confession)} type="button">
+                    Download card
+                  </button>
+                </div>
               </article>
             ))}
 
@@ -315,15 +366,18 @@ export default function HomePageClient({
             {mine.map((confession) => (
               <article className="card" key={confession.id}>
                 <div className="card-meta">
-                  <span>
-                    {new Date(confession.createdAt).toLocaleString([], {
-                      dateStyle: "medium",
-                      timeStyle: "short"
-                    })}
-                  </span>
+                  <span>{formatConfessionDate(confession.createdAt)}</span>
                   {confession.mood ? <span className="pill">{confession.mood}</span> : null}
                 </div>
                 <p>{confession.text}</p>
+                <div className="card-actions">
+                  <button className="ghost small" onClick={() => void handleShare(confession)} type="button">
+                    Share
+                  </button>
+                  <button className="ghost small" onClick={() => handleDownloadCard(confession)} type="button">
+                    Download card
+                  </button>
+                </div>
               </article>
             ))}
 

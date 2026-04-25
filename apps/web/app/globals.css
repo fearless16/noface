@@ -221,6 +221,18 @@ select {
   line-height: 1.7;
 }
 
+.card-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.small {
+  padding: 0.65rem 0.95rem;
+  font-size: 0.9rem;
+}
+
 .empty {
   padding: 2rem;
   border-radius: 24px;

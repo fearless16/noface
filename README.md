@@ -60,7 +60,50 @@ pnpm dev:mobile
 ## Validation
 
 ```bash
+pnpm test
 pnpm typecheck
+pnpm build:web
+```
+
+Or run the full stabilization check in one command:
+
+```bash
+pnpm validate
+```
+
+## CI
+
+- GitHub Actions workflow: `.github/workflows/ci.yml`
+- Runs on pushes and pull requests to `main`
+- Installs with pnpm, then runs tests, typecheck, and the web production build
+
+## Deployment
+
+### Web
+
+- Deployment workflow: `.github/workflows/deploy-web.yml`
+- Target platform: Vercel
+- Required GitHub repository secrets:
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+- The workflow builds and deploys the Next.js app from `apps/web`
+
+### Mobile
+
+- EAS config: `eas.json`
+- Expo app config: `apps/mobile/app.json`
+- The mobile app now includes a bundle identifier, Android package name, and app scheme for build/distribution setup
+- Before shipping to stores, update `com.noface.mobile` to your final unique identifier if needed
+
+Common mobile deployment steps:
+
+```bash
+corepack pnpm install
+corepack pnpm --filter @noface/mobile dev
+npx eas login
+npx eas build --platform ios --profile production
+npx eas build --platform android --profile production
 ```
 
 ## Notes
@@ -73,3 +116,4 @@ pnpm typecheck
 - Supabase now enforces server-side insert guardrails: blocked links and spam terms, plus a limit of 5 confessions per user in 10 minutes.
 - Premium filter preview is now available on web and mobile for the public feed, with mood-match plus short-read and long-read filters.
 - Premium filters are still a local preview only; billing, entitlement sync, and stronger moderation tooling are left for the next phase.
+- Shared package tests, CI validation, and deployment scaffolding for Vercel plus Expo EAS are now included.

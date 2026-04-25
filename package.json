@@ -5,12 +5,16 @@
   "scripts": {
     "dev:web": "corepack pnpm --filter @noface/web dev",
     "dev:mobile": "corepack pnpm --filter @noface/mobile dev",
-    "typecheck": "corepack pnpm -r --if-present run typecheck"
+    "typecheck": "corepack pnpm -r --if-present run typecheck",
+    "test": "corepack pnpm -r --if-present run test",
+    "build:web": "corepack pnpm --filter @noface/web build",
+    "validate": "corepack pnpm test && corepack pnpm typecheck && corepack pnpm build:web"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
   }
 }

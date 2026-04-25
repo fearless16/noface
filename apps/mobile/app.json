@@ -2,6 +2,7 @@
   "expo": {
     "name": "Noface",
     "slug": "noface",
+    "scheme": "noface",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -9,9 +10,11 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.noface.mobile"
     },
     "android": {
+      "package": "com.noface.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#fcf6ea"
       }

@@ -83,11 +83,41 @@ pnpm validate
 
 - Deployment workflow: `.github/workflows/deploy-web.yml`
 - Target platform: Vercel
+- Project config: `apps/web/vercel.json`
 - Required GitHub repository secrets:
    - `VERCEL_TOKEN`
    - `VERCEL_ORG_ID`
    - `VERCEL_PROJECT_ID`
 - The workflow builds and deploys the Next.js app from `apps/web`
+
+Manual web setup:
+
+```bash
+corepack pnpm vercel:web:link
+corepack pnpm vercel:web:pull
+corepack pnpm vercel:web:deploy:prod
+```
+
+When `vercel link` prompts for project settings, use the `apps/web` project and keep it as the deployment root.
+
+Required Vercel environment variables for the web app:
+
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+
+Recommended Vercel project settings:
+
+- Framework preset: `Next.js`
+- Root directory: `apps/web`
+- Install command: use `apps/web/vercel.json`
+- Build command: use `apps/web/vercel.json`
+
+After linking locally, copy the generated values from `apps/web/.vercel/project.json` into GitHub repository secrets:
+
+- `projectId` -> `VERCEL_PROJECT_ID`
+- `orgId` -> `VERCEL_ORG_ID`
+
+Create `VERCEL_TOKEN` from your Vercel account settings, then the GitHub deploy workflow can ship `main` automatically.
 
 ### Mobile
 

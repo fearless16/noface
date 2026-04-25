@@ -8,7 +8,11 @@
     "typecheck": "corepack pnpm -r --if-present run typecheck",
     "test": "corepack pnpm -r --if-present run test",
     "build:web": "corepack pnpm --filter @noface/web build",
-    "validate": "corepack pnpm test && corepack pnpm typecheck && corepack pnpm build:web"
+    "validate": "corepack pnpm test && corepack pnpm typecheck && corepack pnpm build:web",
+    "vercel:web:link": "cd apps/web && corepack pnpm dlx vercel link",
+    "vercel:web:pull": "cd apps/web && corepack pnpm dlx vercel pull --yes",
+    "vercel:web:deploy": "cd apps/web && corepack pnpm dlx vercel deploy",
+    "vercel:web:deploy:prod": "cd apps/web && corepack pnpm dlx vercel deploy --prod"
   },
   "devDependencies": {
     "@types/node": "^25.6.0",

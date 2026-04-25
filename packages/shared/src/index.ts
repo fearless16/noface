@@ -28,6 +28,21 @@ export type ConfessionDraft = {
   isPrivate: boolean;
 };
 
+export const PREMIUM_FEED_FILTERS = [
+  "mood",
+  "short",
+  "long"
+] as const;
+
+export type PremiumFeedFilter = (typeof PREMIUM_FEED_FILTERS)[number];
+
+export type FeedFilter = "all" | PremiumFeedFilter;
+
+export type FeedFilters = {
+  filter: FeedFilter;
+  mood: Mood | "all";
+};
+
 export type ConfessionRow = {
   id: string;
   user_id: string;
@@ -104,6 +119,49 @@ export function formatConfessionDate(createdAt: string): string {
     day: "numeric",
     year: "numeric"
   });
+}
+
+export function createDefaultFeedFilters(): FeedFilters {
+  return {
+    filter: "all",
+    mood: "all"
+  };
+}
+
+export function isPremiumFeedFilter(filter: FeedFilter): filter is PremiumFeedFilter {
+  return PREMIUM_FEED_FILTERS.includes(filter as PremiumFeedFilter);
+}
+
+export function applyFeedFilters(confessions: Confession[], filters: FeedFilters): Confession[] {
+  switch (filters.filter) {
+    case "mood":
+      if (filters.mood === "all") {
+        return confessions;
+      }
+
+      return confessions.filter((confession) => confession.mood === filters.mood);
+    case "short":
+      return confessions.filter((confession) => confession.text.trim().length <= 140);
+    case "long":
+      return confessions.filter((confession) => confession.text.trim().length >= 220);
+    case "all":
+    default:
+      return confessions;
+  }
+}
+
+export function getFeedFilterLabel(filter: FeedFilter): string {
+  switch (filter) {
+    case "mood":
+      return "Mood match";
+    case "short":
+      return "Short reads";
+    case "long":
+      return "Long reads";
+    case "all":
+    default:
+      return "All confessions";
+  }
 }
 
 export function buildConfessionShareText(confession: Confession): string {

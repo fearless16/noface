@@ -79,9 +79,10 @@ jobs:
           printf '%s' "$deploy_json" > deploy-result.json
 
           deployment_url="$(printf '%s' "$deploy_json" | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { const result = JSON.parse(input); const url = result.url; if (!url) { process.exit(1); } console.log(url.startsWith("http") ? url : `https://${url}`); });')"
+          public_url="$(corepack pnpm dlx vercel inspect "$deployment_url" --token="$VERCEL_TOKEN" --format=json | node -e 'let input=""; process.stdin.on("data", chunk => input += chunk); process.stdin.on("end", () => { const result = JSON.parse(input); const aliases = Array.isArray(result.aliases) ? result.aliases : []; const alias = aliases.find((entry) => typeof entry === "string" && entry.endsWith(".vercel.app")); const url = alias || result.url; if (!url) { process.exit(1); } console.log(url.startsWith("http") ? url : `https://${url}`); });')"
 
-          echo "deployment_url=$deployment_url" >> "$GITHUB_OUTPUT"
-          echo "DEPLOYMENT_URL=$deployment_url" >> "$GITHUB_ENV"
+          echo "deployment_url=$public_url" >> "$GITHUB_OUTPUT"
+          echo "DEPLOYMENT_URL=$public_url" >> "$GITHUB_ENV"
 
       - name: Verify deployed site responds
         run: |

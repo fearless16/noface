@@ -50,6 +50,10 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(supabase);
 }
 
+export function canDeleteMyConfessions(): boolean {
+  return !supabase;
+}
+
 export async function resolveAnonymousUserId(): Promise<string> {
   if (!hasBrowserStorage()) {
     return createAnonymousUserId();
@@ -129,4 +133,16 @@ export async function publishConfession(draft: ConfessionDraft): Promise<Confess
   const nextConfessions = sortConfessionsDescending([confession, ...readLocalConfessions()]);
   writeLocalConfessions(nextConfessions);
   return confession;
+}
+
+export async function deleteMyConfession(confessionId: string, userId: string): Promise<void> {
+  if (supabase) {
+    throw new Error("Delete is not enabled for live Supabase mode yet.");
+  }
+
+  const nextConfessions = readLocalConfessions().filter((confession) => {
+    return !(confession.id === confessionId && confession.userId === userId);
+  });
+
+  writeLocalConfessions(nextConfessions);
 }

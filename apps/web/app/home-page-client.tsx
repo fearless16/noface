@@ -13,6 +13,8 @@ import {
   validateConfession
 } from "@noface/shared";
 import {
+  canDeleteMyConfessions,
+  deleteMyConfession,
   isSupabaseConfigured,
   loadFeed,
   loadMyConfessions,
@@ -47,6 +49,7 @@ export default function HomePageClient({
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const isDemoMode = useMemo(() => !hasServerSupabase && !isSupabaseConfigured(), [hasServerSupabase]);
+  const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const visibleFeed = feed.slice(0, visibleCount);
 
   useEffect(() => {
@@ -204,6 +207,32 @@ export default function HomePageClient({
     setShareMessage("Share card downloaded.");
   }
 
+  async function handleDelete(confession: Confession) {
+    if (!canDelete) {
+      setErrorMessage("Delete is only available in demo mode right now.");
+      return;
+    }
+
+    if (typeof window !== "undefined") {
+      const confirmed = window.confirm("Delete this confession from your device?");
+
+      if (!confirmed) {
+        return;
+      }
+    }
+
+    try {
+      await deleteMyConfession(confession.id, confession.userId);
+      setMine((current) => current.filter((item) => item.id !== confession.id));
+      setFeed((current) => current.filter((item) => item.id !== confession.id));
+      setStatusMessage("Confession deleted.");
+      setErrorMessage(null);
+    } catch (error) {
+      console.error(error);
+      setErrorMessage("Unable to delete this confession right now.");
+    }
+  }
+
   return (
     <main className="shell">
       <section className="hero">
@@ -356,6 +385,7 @@ export default function HomePageClient({
             <div>
               <h2>My confessions</h2>
               <p>Everything written by this local anonymous id, newest first.</p>
+              {!canDelete ? <p>Delete stays disabled in live mode until trusted identity exists.</p> : null}
             </div>
             <button className="ghost" onClick={() => setCurrentView("write")} type="button">
               Write another
@@ -376,6 +406,9 @@ export default function HomePageClient({
                   </button>
                   <button className="ghost small" onClick={() => handleDownloadCard(confession)} type="button">
                     Download card
+                  </button>
+                  <button className="danger small" onClick={() => void handleDelete(confession)} type="button">
+                    Delete
                   </button>
                 </div>
               </article>

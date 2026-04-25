@@ -39,6 +39,7 @@ This scaffold follows the supplied spec closely:
    ```bash
    cp .env.example apps/web/.env.local
    cp .env.example apps/mobile/.env
+   cp .env.server.example .env
    ```
 
 3. Add your values:
@@ -47,6 +48,15 @@ This scaffold follows the supplied spec closely:
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `EXPO_PUBLIC_SUPABASE_URL`
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+   - `DATABASE_URL` for optional server-side direct Postgres access
+
+   `DATABASE_URL` is server-only. Do not use it in the browser, mobile client, or any variable prefixed with `NEXT_PUBLIC_` or `EXPO_PUBLIC_`.
+
+   Direct Postgres access notes:
+
+   - Use the Supabase Postgres password for `[YOUR-PASSWORD]`
+   - URL-encode the password if it contains special characters
+   - Prefer the pooler connection string instead of the direct connection string for serverless backends
 
 4. Apply the SQL in `supabase/schema.sql` to your Supabase project.
 
@@ -76,6 +86,9 @@ pnpm validate
 - GitHub Actions workflow: `.github/workflows/ci.yml`
 - Runs on pushes and pull requests to `main`
 - Installs with pnpm, then runs tests, typecheck, and the web production build
+- Database connectivity workflow: `.github/workflows/database-check.yml`
+- Runs automatically on pushes to `main` and can also be run manually from GitHub Actions
+- Automatically skips push runs until the `DATABASE_URL` repository secret is configured
 
 ## Deployment
 
@@ -135,6 +148,22 @@ After linking locally, copy the generated values from `apps/web/.vercel/project.
 - `orgId` -> `VERCEL_ORG_ID`
 
 Create `VERCEL_TOKEN` from your Vercel account settings, then the GitHub deploy workflow can ship `main` automatically.
+
+### Database
+
+- Database check workflow: `.github/workflows/database-check.yml`
+- Required GitHub repository secret:
+   - `DATABASE_URL`
+- Runs automatically on pushes to `main`
+- Can also be run manually from GitHub Actions with `Run workflow`
+- The workflow installs `psql`, connects to Supabase Postgres, and runs a simple `select` check
+
+GitHub database check flow:
+
+1. Open the `Database Check` workflow in GitHub Actions.
+2. Click `Run workflow`.
+3. Wait for the `Supabase Postgres connectivity` job to finish.
+4. Read the job summary for the final status.
 
 ### Mobile
 

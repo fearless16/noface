@@ -10,6 +10,77 @@ create table if not exists public.confessions (
 
 create index if not exists confessions_created_at_idx on public.confessions (created_at desc);
 create index if not exists confessions_user_id_idx on public.confessions (user_id);
+create index if not exists confessions_user_created_at_idx on public.confessions (user_id, created_at desc);
+
+create or replace function public.normalize_confession_text(input_text text)
+returns text
+language sql
+immutable
+as $$
+  select lower(trim(regexp_replace(coalesce(input_text, ''), '\s+', ' ', 'g')))
+$$;
+
+create or replace function public.is_blocked_confession(input_text text)
+returns boolean
+language sql
+immutable
+as $$
+  with normalized as (
+    select public.normalize_confession_text(input_text) as value
+  )
+  select
+    value ~ '(https?://|www\.)'
+    or exists (
+      select 1
+      from unnest(array[
+        'discord.gg',
+        'telegram',
+        'whatsapp',
+        'cashapp',
+        'onlyfans',
+        'crypto giveaway',
+        'buy now'
+      ]) as blocked_term
+      where position(blocked_term in value) > 0
+    )
+  from normalized
+$$;
+
+create or replace function public.enforce_confession_guardrails()
+returns trigger
+language plpgsql
+as $$
+declare
+  recent_confession_count integer;
+begin
+  new.text := trim(new.text);
+  new.user_id := trim(new.user_id);
+  new.created_at := coalesce(new.created_at, timezone('utc', now()));
+
+  if public.is_blocked_confession(new.text) then
+    raise exception 'Confession blocked by moderation filter.' using errcode = 'P0001';
+  end if;
+
+  select count(*)
+  into recent_confession_count
+  from public.confessions
+  where user_id = new.user_id
+    and created_at >= timezone('utc', now()) - interval '10 minutes';
+
+  if recent_confession_count >= 5 then
+    raise exception 'Too many confessions. Try again in a few minutes.' using errcode = 'P0001';
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists confessions_guardrails_trigger on public.confessions;
+
+create trigger confessions_guardrails_trigger
+before insert on public.confessions
+for each row
+execute function public.enforce_confession_guardrails();
 
 alter table public.confessions enable row level security;
 
@@ -24,5 +95,5 @@ for insert
 with check (char_length(trim(user_id)) > 0);
 
 -- Hold delete support until you introduce either trusted auth or a secret-key restore flow.
--- Basic moderation can start at the edge by rejecting blocked keywords before insert.
--- Rate limiting is best enforced outside Postgres with an edge function or API gateway.
+-- Server-side guardrails now block obvious links and common spam terms at insert time.
+-- Server-side rate limiting currently allows up to 5 confessions per user_id in 10 minutes.

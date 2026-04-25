@@ -38,6 +38,10 @@ function readLocalConfessions(): Confession[] {
   return sortConfessionsDescending(parsed);
 }
 
+function readPublicLocalConfessions(): Confession[] {
+  return readLocalConfessions().filter((confession) => !confession.isPrivate);
+}
+
 function writeLocalConfessions(confessions: Confession[]): void {
   if (!hasBrowserStorage()) {
     return;
@@ -74,7 +78,8 @@ export async function loadFeed(): Promise<Confession[]> {
   if (supabase) {
     const { data, error } = await supabase
       .from("confessions")
-      .select("id, user_id, text, mood, created_at")
+      .select("id, user_id, text, mood, is_private, created_at")
+      .eq("is_private", false)
       .order("created_at", { ascending: false })
       .limit(100);
 
@@ -85,14 +90,14 @@ export async function loadFeed(): Promise<Confession[]> {
     return (data ?? []).map(fromRow);
   }
 
-  return readLocalConfessions();
+  return readPublicLocalConfessions();
 }
 
 export async function loadMyConfessions(userId: string): Promise<Confession[]> {
   if (supabase) {
     const { data, error } = await supabase
       .from("confessions")
-      .select("id, user_id, text, mood, created_at")
+      .select("id, user_id, text, mood, is_private, created_at")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
 
@@ -112,6 +117,7 @@ export async function publishConfession(draft: ConfessionDraft): Promise<Confess
     userId: draft.userId,
     text: draft.text.trim(),
     mood: draft.mood,
+    isPrivate: draft.isPrivate,
     createdAt: new Date().toISOString(),
     source: supabase ? "supabase" : "local"
   };
@@ -120,7 +126,7 @@ export async function publishConfession(draft: ConfessionDraft): Promise<Confess
     const { data, error } = await supabase
       .from("confessions")
       .insert(toRow(confession))
-      .select("id, user_id, text, mood, created_at")
+      .select("id, user_id, text, mood, is_private, created_at")
       .single();
 
     if (error) {

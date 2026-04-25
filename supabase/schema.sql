@@ -5,8 +5,12 @@ create table if not exists public.confessions (
   user_id text not null check (char_length(trim(user_id)) > 0),
   text text not null check (char_length(trim(text)) between 1 and 500),
   mood text check (mood in ('sad', 'angry', 'regret', 'happy', 'anxious', 'hopeful')),
+  is_private boolean not null default false,
   created_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.confessions
+add column if not exists is_private boolean not null default false;
 
 create index if not exists confessions_created_at_idx on public.confessions (created_at desc);
 create index if not exists confessions_user_id_idx on public.confessions (user_id);

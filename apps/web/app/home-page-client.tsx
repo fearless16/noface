@@ -41,6 +41,7 @@ export default function HomePageClient({
   const [mine, setMine] = useState<Confession[]>([]);
   const [text, setText] = useState("");
   const [selectedMood, setSelectedMood] = useState<Mood | "">("");
+  const [isPrivate, setIsPrivate] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
@@ -143,15 +144,17 @@ export default function HomePageClient({
       const created = await publishConfession({
         userId,
         text,
-        mood: selectedMood || null
+        mood: selectedMood || null,
+        isPrivate
       });
 
-      setFeed((current) => [created, ...current]);
+      setFeed((current) => (created.isPrivate ? current : [created, ...current]));
       setMine((current) => [created, ...current]);
       setVisibleCount((current) => Math.max(PAGE_SIZE, current));
       setText("");
       setSelectedMood("");
-      setStatusMessage("Confession posted.");
+      setIsPrivate(false);
+      setStatusMessage(created.isPrivate ? "Private confession saved." : "Confession posted.");
       setCurrentView("feed");
     } catch (error) {
       console.error(error);
@@ -358,6 +361,18 @@ export default function HomePageClient({
               ))}
             </select>
 
+            <label className="toggle-row">
+              <input
+                checked={isPrivate}
+                onChange={(event) => setIsPrivate(event.target.checked)}
+                type="checkbox"
+              />
+              <span>Save as private confession</span>
+            </label>
+            <p className="helper">
+              Private confessions stay out of the public feed and only appear in My Confessions.
+            </p>
+
             <div className="composer-footer">
               <div>
                 <p className="helper">{text.trim().length}/{MAX_CONFESSION_LENGTH} characters</p>
@@ -397,7 +412,10 @@ export default function HomePageClient({
               <article className="card" key={confession.id}>
                 <div className="card-meta">
                   <span>{formatConfessionDate(confession.createdAt)}</span>
-                  {confession.mood ? <span className="pill">{confession.mood}</span> : null}
+                  <div className="card-badges">
+                    {confession.isPrivate ? <span className="pill private">private</span> : null}
+                    {confession.mood ? <span className="pill">{confession.mood}</span> : null}
+                  </div>
                 </div>
                 <p>{confession.text}</p>
                 <div className="card-actions">

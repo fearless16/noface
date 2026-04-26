@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Sharing from "expo-sharing";
 import { useFonts, SpaceMono_400Regular, SpaceMono_700Bold } from "@expo-google-fonts/space-mono";
 import { Inter_400Regular, Inter_600SemiBold } from "@expo-google-fonts/inter";
@@ -92,7 +92,7 @@ function AppContent() {
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
 
-  async function loadNextFeedPage() {
+  const loadNextFeedPage = useCallback(async () => {
     if (isLoadingFeedPage || !hasMoreFeed) {
       return;
     }
@@ -117,7 +117,7 @@ function AppContent() {
     } finally {
       setIsLoadingFeedPage(false);
     }
-  }
+  }, [isLoadingFeedPage, hasMoreFeed, feedOffset]);
 
   useEffect(() => {
     let isActive = true;
@@ -218,7 +218,7 @@ function AppContent() {
 
     try {
       setSharingConfession(confession);
-      await waitForNextFrame();
+      await waitForShareCardRender();
 
       if (shareCardRef.current && Platform.OS !== "web" && (await Sharing.isAvailableAsync())) {
         const uri = await captureRef(shareCardRef, {
@@ -396,6 +396,9 @@ function AppContent() {
               </Pressable>
             </View>
 
+            {statusMessage ? <Text style={styles.statusText}>{statusMessage}</Text> : null}
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
             <View style={styles.filterPanel}>
               <Text style={styles.filterEyebrow}>premium filters</Text>
               <Text style={styles.filterTitle}>Shape the public feed</Text>
@@ -525,7 +528,7 @@ function AppContent() {
         ) : null}
 
         {viewMode === "write" ? (
-          <ScrollView contentContainerStyle={styles.composePane} showsVerticalScrollIndicator={false}>
+          <ScrollView style={styles.flex1} contentContainerStyle={styles.composePane} showsVerticalScrollIndicator={false}>
             <Text style={styles.sectionTitle}>// write</Text>
             <Text style={styles.sectionSubtitle}>
               up to {MAX_CONFESSION_LENGTH} chars. nothing but your ghost id.
@@ -639,6 +642,16 @@ function AppContent() {
       </View>
     </SafeAreaView>
   );
+}
+
+function waitForShareCardRender(): Promise<void> {
+  return new Promise((resolve) => {
+    // Two rAF calls: first fires before paint, second fires after first paint.
+    // This ensures the share card has rendered with updated confession data.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
 }
 
 function waitForNextFrame(): Promise<void> {

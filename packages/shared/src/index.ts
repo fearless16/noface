@@ -12,6 +12,15 @@ export const MOODS = [
 
 export type Mood = (typeof MOODS)[number];
 
+export const MOOD_EMOJI: Record<Mood, string> = {
+  sad: "🌧️",
+  angry: "🔥",
+  regret: "💀",
+  happy: "🖤",
+  anxious: "🕷️",
+  hopeful: "🌙"
+};
+
 export type Confession = {
   id: string;
   userId: string;

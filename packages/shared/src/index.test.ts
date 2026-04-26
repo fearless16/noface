@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   type Confession,
   MAX_CONFESSION_LENGTH,
+  MOOD_EMOJI,
+  MOODS,
   applyFeedFilters,
   buildConfessionShareText,
   createDefaultFeedFilters,
@@ -102,5 +104,27 @@ describe("serialization helpers", () => {
 
     expect(sharedText).toContain("Private confession");
     expect(sharedText).toContain("Mood: sad");
+  });
+});
+
+describe("MOOD_EMOJI", () => {
+  it("has an emoji entry for every mood", () => {
+    for (const mood of MOODS) {
+      expect(MOOD_EMOJI[mood]).toBeTruthy();
+      expect(typeof MOOD_EMOJI[mood]).toBe("string");
+    }
+  });
+
+  it("covers all 6 moods", () => {
+    expect(Object.keys(MOOD_EMOJI)).toHaveLength(MOODS.length);
+  });
+
+  it("maps known moods to the expected emojis", () => {
+    expect(MOOD_EMOJI.sad).toBe("🌧️");
+    expect(MOOD_EMOJI.angry).toBe("🔥");
+    expect(MOOD_EMOJI.regret).toBe("💀");
+    expect(MOOD_EMOJI.happy).toBe("🖤");
+    expect(MOOD_EMOJI.anxious).toBe("🕷️");
+    expect(MOOD_EMOJI.hopeful).toBe("🌙");
   });
 });

@@ -16,6 +16,7 @@ import {
   isPremiumFeedFilter,
   type Mood,
   MAX_CONFESSION_LENGTH,
+  MOOD_EMOJI,
   MOODS,
   validateConfession
 } from "@noface/shared";
@@ -28,14 +29,6 @@ import {
   resolveAnonymousUserId
 } from "../lib/confessions";
 
-const MOOD_EMOJI: Record<string, string> = {
-  sad: "🌧️",
-  angry: "🔥",
-  regret: "💀",
-  happy: "🖤",
-  anxious: "🕷️",
-  hopeful: "🌙",
-};
 
 type View = "feed" | "write" | "mine";
 

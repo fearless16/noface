@@ -67,6 +67,8 @@ pnpm dev:web
 pnpm dev:mobile
 ```
 
+Both dev commands regenerate the shared 1000-item demo feed before the app starts. When Supabase is not configured, the web and mobile local fallback layers automatically top up any missing seed entries using that generated feed.
+
 ## Validation
 
 ```bash

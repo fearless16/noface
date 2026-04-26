@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEMO_CONFESSION_SEED_VERSION,
   type Confession,
   createAnonymousUsername,
   DEMO_CONFESSIONS,
@@ -364,8 +365,9 @@ describe("MOOD_EMOJI", () => {
 });
 
 describe("DEMO_CONFESSIONS", () => {
-  it("seeds enough public confessions to overflow the default mobile feed viewport", () => {
-    expect(DEMO_CONFESSIONS.length).toBeGreaterThanOrEqual(8);
+  it("seeds the full 1000-item dev feed", () => {
+    expect(DEMO_CONFESSIONS).toHaveLength(1000);
+    expect(DEMO_CONFESSION_SEED_VERSION).toBe("demo-feed-v1-1000");
   });
 
   it("keeps all demo confessions public so the feed preview is populated", () => {
@@ -376,5 +378,21 @@ describe("DEMO_CONFESSIONS", () => {
     expect(new Set(DEMO_CONFESSIONS.map((confession) => confession.id)).size).toBe(
       DEMO_CONFESSIONS.length
     );
+  });
+
+  it("spans many users, moods, and lengths so development feels realistic", () => {
+    const distinctUsers = new Set(DEMO_CONFESSIONS.map((confession) => confession.userId));
+    const distinctMoods = new Set(DEMO_CONFESSIONS.map((confession) => confession.mood));
+    const shortCount = DEMO_CONFESSIONS.filter((confession) => confession.text.length <= 140).length;
+    const mediumCount = DEMO_CONFESSIONS.filter(
+      (confession) => confession.text.length > 140 && confession.text.length < 220
+    ).length;
+    const longCount = DEMO_CONFESSIONS.filter((confession) => confession.text.length >= 220).length;
+
+    expect(distinctUsers.size).toBeGreaterThanOrEqual(200);
+    expect(distinctMoods.size).toBeGreaterThanOrEqual(7);
+    expect(shortCount).toBeGreaterThan(0);
+    expect(mediumCount).toBeGreaterThan(0);
+    expect(longCount).toBeGreaterThan(0);
   });
 });

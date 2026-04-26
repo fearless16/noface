@@ -167,10 +167,22 @@ GitHub database check flow:
 
 ### Mobile
 
+- Deployment workflow: `.github/workflows/deploy-mobile.yml`
 - EAS config: `eas.json`
 - Expo app config: `apps/mobile/app.json`
 - The mobile app now includes a bundle identifier, Android package name, and app scheme for build/distribution setup
 - Before shipping to stores, update `com.noface.mobile` to your final unique identifier if needed
+- Required GitHub repository secret:
+   - `EXPO_TOKEN`
+- The workflow runs `pnpm validate` first, then starts an Expo EAS build from GitHub Actions
+- The workflow can be run manually from GitHub Actions with one click via `Run workflow`
+
+GitHub one-click mobile deployment flow:
+
+1. Open the `Deploy Mobile` workflow in GitHub Actions.
+2. Choose the EAS profile (`preview` or `production`) and target platform (`ios`, `android`, or `all`).
+3. Click `Run workflow`.
+4. Follow the `Expo EAS build` job logs for the final build artifact links.
 
 Common mobile deployment steps:
 

@@ -4,6 +4,7 @@
     "slug": "noface",
     "scheme": "noface",
     "version": "1.0.0",
+    "sdkVersion": "55.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "assetBundlePatterns": [

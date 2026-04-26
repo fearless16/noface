@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Sharing from "expo-sharing";
+import { useFonts, SpaceMono_400Regular, SpaceMono_700Bold } from "@expo-google-fonts/space-mono";
+import { Inter_400Regular, Inter_600SemiBold } from "@expo-google-fonts/inter";
+import * as SplashScreen from "expo-splash-screen";
 import {
   Alert,
   FlatList,
@@ -48,6 +51,25 @@ const PAGE_SIZE = 8;
 const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    SpaceMono_400Regular,
+    SpaceMono_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
+  return <AppContent />;
+}
+
+function AppContent() {
   const [viewMode, setViewMode] = useState<ViewMode>("feed");
   const [userId, setUserId] = useState("");
   const [feed, setFeed] = useState<Confession[]>([]);
@@ -649,7 +671,7 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     fontSize: 10,
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "uppercase",
     letterSpacing: 2,
     color: "#9d4edd",
@@ -657,7 +679,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 42,
-    fontWeight: "800",
+    fontFamily: "SpaceMono_700Bold",
     color: "#e0e0f0",
     letterSpacing: -1
   },
@@ -666,7 +688,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 20,
     color: "#4a4a6a",
-    fontFamily: "Courier New"
+    fontFamily: "SpaceMono_400Regular"
   },
   metricsRow: {
     flexDirection: "row",
@@ -685,7 +707,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 9,
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     color: "#4a4a6a",
     textTransform: "uppercase",
     letterSpacing: 1
@@ -693,14 +715,14 @@ const styles = StyleSheet.create({
   metricValue: {
     marginTop: 4,
     fontSize: 17,
-    fontWeight: "800",
+    fontFamily: "SpaceMono_700Bold",
     color: "#e0e0f0"
   },
   modeBanner: {
     marginTop: 12,
     color: "#4a4a6a",
     fontSize: 11,
-    fontFamily: "Courier New"
+    fontFamily: "SpaceMono_400Regular"
   },
   tabs: {
     flexDirection: "row",
@@ -721,16 +743,14 @@ const styles = StyleSheet.create({
   },
   tabText: {
     color: "#4a4a6a",
-    fontWeight: "600",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 1
   },
   activeTabText: {
     color: "#ffffff",
-    fontWeight: "700",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_700Bold",
     fontSize: 11,
     textTransform: "uppercase",
     letterSpacing: 1
@@ -777,7 +797,7 @@ const styles = StyleSheet.create({
   metaText: {
     color: "#4a4a6a",
     fontSize: 10,
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "uppercase",
     letterSpacing: 0.8
   },
@@ -789,7 +809,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     overflow: "hidden",
     fontSize: 10,
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "uppercase"
   },
   privatePill: {
@@ -800,11 +820,12 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     overflow: "hidden",
     fontSize: 10,
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "lowercase"
   },
   cardText: {
     color: "#e0e0f0",
+    fontFamily: "Inter_400Regular",
     fontSize: 15,
     lineHeight: 26
   },
@@ -818,7 +839,7 @@ const styles = StyleSheet.create({
   emptyText: {
     color: "#4a4a6a",
     textAlign: "center",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 12
   },
   composePane: {
@@ -826,9 +847,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "800",
+    fontFamily: "SpaceMono_700Bold",
     color: "#9d4edd",
-    fontFamily: "Courier New",
     textTransform: "uppercase",
     letterSpacing: 1.5
   },
@@ -837,7 +857,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     color: "#4a4a6a",
     lineHeight: 20,
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 12
   },
   filterPanel: {
@@ -851,14 +871,14 @@ const styles = StyleSheet.create({
   },
   filterEyebrow: {
     fontSize: 9,
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "uppercase",
     letterSpacing: 2,
     color: "#9d4edd"
   },
   filterTitle: {
     fontSize: 16,
-    fontWeight: "700",
+    fontFamily: "SpaceMono_700Bold",
     color: "#e0e0f0"
   },
   filterCopy: {
@@ -887,8 +907,7 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     color: "#4a4a6a",
-    fontWeight: "600",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 11,
     textTransform: "uppercase"
   },
@@ -900,7 +919,7 @@ const styles = StyleSheet.create({
     color: "#4a4a6a",
     fontSize: 11,
     lineHeight: 18,
-    fontFamily: "Courier New"
+    fontFamily: "SpaceMono_400Regular"
   },
   textArea: {
     minHeight: 180,
@@ -910,6 +929,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)",
     color: "#e0e0f0",
+    fontFamily: "Inter_400Regular",
     fontSize: 15,
     lineHeight: 24
   },
@@ -929,12 +949,13 @@ const styles = StyleSheet.create({
   },
   privateLabel: {
     color: "#e0e0f0",
-    fontSize: 14,
-    fontWeight: "600"
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14
   },
   privateHint: {
     marginTop: 4,
     color: "#4a4a6a",
+    fontFamily: "Inter_400Regular",
     lineHeight: 18,
     fontSize: 12
   },
@@ -953,31 +974,31 @@ const styles = StyleSheet.create({
   },
   moodChipText: {
     color: "#4a4a6a",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 12,
     textTransform: "capitalize"
   },
   selectedMoodText: {
     color: "#ffffff",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 12,
     textTransform: "capitalize"
   },
   helperText: {
     color: "#4a4a6a",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 11
   },
   statusText: {
     marginTop: 8,
     color: "#4a4a6a",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 11
   },
   errorText: {
     marginTop: 8,
     color: "#ff3366",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 11
   },
   primaryButton: {
@@ -999,13 +1020,11 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontSize: 14,
-    fontWeight: "700",
-    fontFamily: "Courier New"
+    fontFamily: "SpaceMono_700Bold"
   },
   secondaryButtonText: {
     color: "#4a4a6a",
-    fontWeight: "600",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 11
   },
   shareButton: {
@@ -1020,8 +1039,7 @@ const styles = StyleSheet.create({
   },
   shareButtonText: {
     color: "#9d4edd",
-    fontWeight: "600",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 11
   },
   cardActionRow: {
@@ -1041,8 +1059,7 @@ const styles = StyleSheet.create({
   },
   deleteButtonText: {
     color: "#ff3366",
-    fontWeight: "600",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     fontSize: 11
   },
   hiddenShareCanvas: {
@@ -1063,19 +1080,19 @@ const styles = StyleSheet.create({
     fontSize: 22,
     letterSpacing: 10,
     color: "#9d4edd",
-    fontFamily: "Courier New"
+    fontFamily: "SpaceMono_400Regular"
   },
   shareCardTitle: {
     marginTop: 26,
     fontSize: 60,
-    fontWeight: "800",
+    fontFamily: "SpaceMono_700Bold",
     color: "#e0e0f0"
   },
   shareCardDate: {
     marginTop: 18,
     fontSize: 22,
     color: "#4a4a6a",
-    fontFamily: "Courier New"
+    fontFamily: "SpaceMono_400Regular"
   },
   shareCardBody: {
     marginTop: 84,
@@ -1087,13 +1104,13 @@ const styles = StyleSheet.create({
     marginTop: 36,
     fontSize: 28,
     color: "#9d4edd",
-    fontFamily: "Courier New",
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "uppercase"
   },
   shareCardFooter: {
     marginTop: 120,
     fontSize: 22,
     color: "#4a4a6a",
-    fontFamily: "Courier New"
+    fontFamily: "SpaceMono_400Regular"
   }
 });

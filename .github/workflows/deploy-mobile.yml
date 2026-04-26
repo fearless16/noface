@@ -1,0 +1,114 @@
+name: Deploy Mobile
+
+run-name: Deploy mobile (${{ inputs.profile }}, ${{ inputs.platform }}) from ${{ github.ref_name }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: EAS build profile
+        required: true
+        default: production
+        type: choice
+        options:
+          - preview
+          - production
+      platform:
+        description: Mobile platform to build
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - ios
+          - android
+
+concurrency:
+  group: deploy-mobile-${{ github.ref }}-${{ inputs.profile }}-${{ inputs.platform }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Expo EAS build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    environment:
+      name: mobile-${{ inputs.profile }}
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Expo token
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${EXPO_TOKEN}" ]]; then
+            echo "::error title=Missing Expo token::Add the EXPO_TOKEN repository secret before running mobile deploys."
+            exit 1
+          fi
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Validate workspace before mobile build
+        run: corepack pnpm validate
+
+      - name: Setup Expo and EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Start EAS build
+        working-directory: apps/mobile
+        run: |
+          set -euo pipefail
+
+          eas build \
+            --platform "${{ inputs.platform }}" \
+            --profile "${{ inputs.profile }}" \
+            --non-interactive
+
+      - name: Write success summary
+        if: success()
+        run: |
+          {
+            echo "## Mobile deployment started"
+            echo ""
+            echo "- Ref: \\`${GITHUB_REF_NAME}\\`"
+            echo "- Commit: \\`${GITHUB_SHA}\\`"
+            echo "- EAS profile: \\`${{ inputs.profile }}\\`"
+            echo "- Platform: \\`${{ inputs.platform }}\\`"
+            echo "- Validation: \\`corepack pnpm validate\\` passed before the build"
+            echo "- Follow the linked EAS build logs in the workflow step output for final artifact status"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Write failure summary
+        if: failure()
+        run: |
+          {
+            echo "## Mobile deployment failed"
+            echo ""
+            echo "- Ref: \\`${GITHUB_REF_NAME}\\`"
+            echo "- Commit: \\`${GITHUB_SHA}\\`"
+            echo "- EAS profile: \\`${{ inputs.profile }}\\`"
+            echo "- Platform: \\`${{ inputs.platform }}\\`"
+            echo "- Check the failed workflow logs for the failing validation or EAS step."
+          } >> "$GITHUB_STEP_SUMMARY"

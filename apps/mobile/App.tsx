@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Sharing from "expo-sharing";
+import { useFonts, SpaceMono_400Regular, SpaceMono_700Bold } from "@expo-google-fonts/space-mono";
+import { Inter_400Regular, Inter_600SemiBold } from "@expo-google-fonts/inter";
+import * as SplashScreen from "expo-splash-screen";
 import {
   Alert,
   FlatList,
   Platform,
   Pressable,
-  SafeAreaView,
   Share,
   ScrollView,
   StatusBar,
@@ -15,6 +17,7 @@ import {
   TextInput,
   View
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { captureRef } from "react-native-view-shot";
 import {
   applyFeedFilters,
@@ -29,18 +32,23 @@ import {
   isPremiumFeedFilter,
   type Mood,
   MAX_CONFESSION_LENGTH,
+  MOOD_EMOJI,
   MOODS,
   validateConfession
 } from "@noface/shared";
 import {
   canDeleteMyConfessions,
   deleteMyConfession,
-  isSupabaseConfigured,
   loadFeedPage,
   loadMyConfessions,
   publishConfession,
   resolveAnonymousUserId
 } from "./src/confessions";
+import {
+  MOBILE_SCROLL_PROPS,
+  MOBILE_TOUCH_TARGETS,
+  MOBILE_WRITE_SCROLL_PROPS
+} from "./src/ui-contract";
 
 type ViewMode = "feed" | "write" | "mine";
 
@@ -48,6 +56,29 @@ const PAGE_SIZE = 8;
 const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    SpaceMono_400Regular,
+    SpaceMono_700Bold,
+    Inter_400Regular,
+    Inter_600SemiBold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      void SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
+export function AppContent() {
   const [viewMode, setViewMode] = useState<ViewMode>("feed");
   const [userId, setUserId] = useState("");
   const [feed, setFeed] = useState<Confession[]>([]);
@@ -67,11 +98,10 @@ export default function App() {
   const [sharingConfession, setSharingConfession] = useState<Confession | null>(null);
   const shareCardRef = useRef<View>(null);
 
-  const isDemoMode = useMemo(() => !isSupabaseConfigured(), []);
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
 
-  async function loadNextFeedPage() {
+  const loadNextFeedPage = useCallback(async () => {
     if (isLoadingFeedPage || !hasMoreFeed) {
       return;
     }
@@ -96,7 +126,7 @@ export default function App() {
     } finally {
       setIsLoadingFeedPage(false);
     }
-  }
+  }, [isLoadingFeedPage, hasMoreFeed, feedOffset]);
 
   useEffect(() => {
     let isActive = true;
@@ -197,7 +227,7 @@ export default function App() {
 
     try {
       setSharingConfession(confession);
-      await waitForNextFrame();
+      await waitForShareCardRender();
 
       if (shareCardRef.current && Platform.OS !== "web" && (await Sharing.isAvailableAsync())) {
         const uri = await captureRef(shareCardRef, {
@@ -223,6 +253,8 @@ export default function App() {
       console.error(error);
       setErrorMessage("Unable to share right now.");
       setStatusMessage(null);
+    } finally {
+      setSharingConfession(null);
     }
   }
 
@@ -301,8 +333,8 @@ export default function App() {
         <View style={styles.cardMeta}>
           <Text style={styles.metaText}>{formatConfessionDate(item.createdAt)}</Text>
           <View style={styles.cardBadges}>
-            {item.isPrivate ? <Text style={styles.privatePill}>private</Text> : null}
-            {item.mood ? <Text style={styles.pill}>{item.mood}</Text> : null}
+            {item.isPrivate ? <Text style={styles.privatePill}>🔒 private</Text> : null}
+            {item.mood ? <Text style={styles.pill}>{MOOD_EMOJI[item.mood]} {item.mood}</Text> : null}
           </View>
         </View>
         <Text style={styles.cardText}>{item.text}</Text>
@@ -316,35 +348,29 @@ export default function App() {
   const visibleFeed = filteredFeed.slice(0, visibleCount);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
+      <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>anonymous daily confession app</Text>
+          <Text style={styles.eyebrow}>// anonymous confession app</Text>
           <Text style={styles.title}>Noface</Text>
           <Text style={styles.subtitle}>
-            A private release valve for short confessions, with no identity and no social graph.
+            // ghost id. write once. read what strangers carry. no profiles, no score.
           </Text>
           <View style={styles.metricsRow}>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Mode</Text>
-              <Text style={styles.metricValue}>{isDemoMode ? "Demo" : "Supabase"}</Text>
-            </View>
-            <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Feed</Text>
+              <Text style={styles.metricLabel}>// confessions</Text>
               <Text style={styles.metricValue}>{hasMoreFeed ? `${filteredFeed.length}+` : filteredFeed.length}</Text>
             </View>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>Mine</Text>
+              <Text style={styles.metricLabel}>// mine</Text>
               <Text style={styles.metricValue}>{mine.length}</Text>
             </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricLabel}>// ghost id</Text>
+              <Text style={styles.metricValue}>{userId ? userId.slice(0, 8) : "···"}</Text>
+            </View>
           </View>
-          <Text style={styles.modeBanner}>
-            {isDemoMode
-              ? "Demo mode is active until EXPO_PUBLIC_SUPABASE_* values are configured."
-              : "Live mode is connected to Supabase."}
-          </Text>
-          <Text style={styles.userId}>Local id: {userId ? `${userId.slice(0, 8)}...` : "loading"}</Text>
         </View>
 
         <View style={styles.tabs}>
@@ -369,15 +395,18 @@ export default function App() {
           <View style={styles.feedPane}>
             <View style={styles.feedHeader}>
               <View style={styles.feedHeaderCopy}>
-                <Text style={styles.sectionTitle}>Today&apos;s confessions</Text>
+                <Text style={styles.sectionTitle}>// confessions</Text>
                 <Text style={styles.sectionSubtitle}>
-                  Public feed only, with premium filters for mood and reading length.
+                  anonymous. infinite. text and mood only.
                 </Text>
               </View>
               <Pressable onPress={() => setViewMode("write")} style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>Write now</Text>
               </Pressable>
             </View>
+
+            {statusMessage ? <Text style={styles.statusText}>{statusMessage}</Text> : null}
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
             <View style={styles.filterPanel}>
               <Text style={styles.filterEyebrow}>premium filters</Text>
@@ -462,7 +491,7 @@ export default function App() {
                         feedFilters.mood === mood ? styles.activeFilterChipText : null
                       ]}
                     >
-                      {mood}
+                      {MOOD_EMOJI[mood]} {mood}
                     </Text>
                   </Pressable>
                 ))}
@@ -476,6 +505,10 @@ export default function App() {
             </Text>
 
             <FlatList
+              alwaysBounceVertical={MOBILE_SCROLL_PROPS.alwaysBounceVertical}
+              bounces={MOBILE_SCROLL_PROPS.bounces}
+              contentInsetAdjustmentBehavior={MOBILE_SCROLL_PROPS.contentInsetAdjustmentBehavior}
+              style={styles.flex1}
               contentContainerStyle={styles.listContent}
               data={visibleFeed}
               keyExtractor={(item) => item.id}
@@ -498,27 +531,34 @@ export default function App() {
               }}
               onEndReachedThreshold={0.5}
               ListFooterComponent={
-                isLoadingFeedPage ? <Text style={styles.filterNote}>Loading more confessions...</Text> : null
+                isLoadingFeedPage ? <Text style={styles.filterNote}>// loading more...</Text> : null
               }
               renderItem={renderCard}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={MOBILE_SCROLL_PROPS.showsVerticalScrollIndicator}
             />
           </View>
         ) : null}
 
         {viewMode === "write" ? (
-          <ScrollView contentContainerStyle={styles.composePane} showsVerticalScrollIndicator={false}>
-            <Text style={styles.sectionTitle}>Write anonymously</Text>
+          <ScrollView
+            alwaysBounceVertical={MOBILE_WRITE_SCROLL_PROPS.alwaysBounceVertical}
+            bounces={MOBILE_WRITE_SCROLL_PROPS.bounces}
+            contentContainerStyle={styles.composePane}
+            keyboardShouldPersistTaps={MOBILE_WRITE_SCROLL_PROPS.keyboardShouldPersistTaps}
+            showsVerticalScrollIndicator={MOBILE_WRITE_SCROLL_PROPS.showsVerticalScrollIndicator}
+            style={styles.flex1}
+          >
+            <Text style={styles.sectionTitle}>// write</Text>
             <Text style={styles.sectionSubtitle}>
-              Up to {MAX_CONFESSION_LENGTH} characters with an optional mood tag.
+              up to {MAX_CONFESSION_LENGTH} chars. nothing but your ghost id.
             </Text>
 
             <TextInput
               maxLength={MAX_CONFESSION_LENGTH}
               multiline
               onChangeText={setText}
-              placeholder="Say the thing you would never attach to your real name."
-              placeholderTextColor="#8f8a82"
+              placeholder="// say the thing you'd never post under your real name."
+              placeholderTextColor="#4a4a6a"
               style={styles.textArea}
               textAlignVertical="top"
               value={text}
@@ -538,7 +578,7 @@ export default function App() {
                   style={[styles.moodChip, selectedMood === mood ? styles.selectedMoodChip : null]}
                 >
                   <Text style={selectedMood === mood ? styles.selectedMoodText : styles.moodChipText}>
-                    {mood}
+                    {MOOD_EMOJI[mood]} {mood}
                   </Text>
                 </Pressable>
               ))}
@@ -568,23 +608,30 @@ export default function App() {
           <View style={styles.minePane}>
             {!canDelete ? (
               <Text style={styles.modeBanner}>
-                Delete stays disabled in live mode until trusted identity exists.
+                // delete disabled in live mode until trusted identity exists.
               </Text>
             ) : null}
             <FlatList
+              alwaysBounceVertical={MOBILE_SCROLL_PROPS.alwaysBounceVertical}
+              bounces={MOBILE_SCROLL_PROPS.bounces}
+              contentInsetAdjustmentBehavior={MOBILE_SCROLL_PROPS.contentInsetAdjustmentBehavior}
+              style={styles.flex1}
               contentContainerStyle={styles.listContent}
               data={mine}
               keyExtractor={(item) => item.id}
               ListEmptyComponent={
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyText}>Nothing posted yet from this device.</Text>
+                  <Text style={styles.emptyText}>// nothing posted yet from this ghost id.</Text>
                 </View>
               }
               renderItem={({ item }) => (
                 <View style={styles.card}>
                   <View style={styles.cardMeta}>
                     <Text style={styles.metaText}>{formatConfessionDate(item.createdAt)}</Text>
-                    {item.mood ? <Text style={styles.pill}>{item.mood}</Text> : null}
+                    <View style={styles.cardBadges}>
+                      {item.isPrivate ? <Text style={styles.privatePill}>🔒 private</Text> : null}
+                      {item.mood ? <Text style={styles.pill}>{MOOD_EMOJI[item.mood]} {item.mood}</Text> : null}
+                    </View>
                   </View>
                   <Text style={styles.cardText}>{item.text}</Text>
                   <View style={styles.cardActionRow}>
@@ -597,7 +644,7 @@ export default function App() {
                   </View>
                 </View>
               )}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={MOBILE_SCROLL_PROPS.showsVerticalScrollIndicator}
             />
           </View>
         ) : null}
@@ -619,254 +666,338 @@ export default function App() {
   );
 }
 
+function waitForShareCardRender(): Promise<void> {
+  return new Promise((resolve) => {
+    // Two rAF calls: first fires before paint, second fires after first paint.
+    // This ensures the share card has rendered with updated confession data.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
 function waitForNextFrame(): Promise<void> {
   return new Promise((resolve) => {
     requestAnimationFrame(() => resolve());
   });
 }
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
+  flex1: {
+    flex: 1
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: "#fcf6ea"
+    backgroundColor: "#07070f"
   },
   container: {
     flex: 1,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: "#fcf6ea"
+    backgroundColor: "#07070f"
   },
   hero: {
     padding: 20,
-    borderRadius: 28,
-    backgroundColor: "#fff7ed",
+    borderRadius: 6,
+    backgroundColor: "#0d0d1a",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    borderLeftWidth: 2,
+    borderLeftColor: "#9d4edd",
     marginTop: 8,
-    shadowColor: "#17202a",
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 2
+    shadowColor: "#000",
+    shadowOpacity: 0.7,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4
   },
   eyebrow: {
-    fontSize: 11,
+    fontSize: 10,
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "uppercase",
     letterSpacing: 2,
-    color: "#6b6d76",
+    color: "#9d4edd",
     marginBottom: 10
   },
   title: {
     fontSize: 42,
-    fontWeight: "700",
-    color: "#17202a"
+    fontFamily: "SpaceMono_700Bold",
+    color: "#e0e0f0",
+    letterSpacing: -1
   },
   subtitle: {
     marginTop: 8,
-    fontSize: 15,
-    lineHeight: 24,
-    color: "#566573"
+    fontSize: 12,
+    lineHeight: 20,
+    color: "#4a4a6a",
+    fontFamily: "SpaceMono_400Regular"
   },
   metricsRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     marginTop: 16
   },
   metricCard: {
     flex: 1,
-    padding: 12,
-    borderRadius: 18,
-    backgroundColor: "rgba(255,255,255,0.8)"
+    padding: 10,
+    borderRadius: 3,
+    backgroundColor: "#111122",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    borderLeftWidth: 2,
+    borderLeftColor: "#9d4edd"
   },
   metricLabel: {
-    fontSize: 12,
-    color: "#566573"
+    fontSize: 9,
+    fontFamily: "SpaceMono_400Regular",
+    color: "#4a4a6a",
+    textTransform: "uppercase",
+    letterSpacing: 1
   },
   metricValue: {
     marginTop: 4,
-    fontSize: 19,
-    fontWeight: "600",
-    color: "#17202a"
+    fontSize: 17,
+    fontFamily: "SpaceMono_700Bold",
+    color: "#e0e0f0"
   },
   modeBanner: {
-    marginTop: 16,
-    color: "#566573",
-    fontSize: 13
-  },
-  userId: {
-    marginTop: 8,
-    color: "#8f4b2d",
-    fontSize: 13
+    marginTop: 12,
+    color: "#4a4a6a",
+    fontSize: 11,
+    fontFamily: "SpaceMono_400Regular"
   },
   tabs: {
     flexDirection: "row",
-    gap: 10,
-    marginVertical: 16
+    gap: 8,
+    marginVertical: 14
   },
   tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.85)"
+    flex: 1,
+    minHeight: MOBILE_TOUCH_TARGETS.tabMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 3,
+    backgroundColor: "#0d0d1a",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)"
   },
   activeTab: {
-    backgroundColor: "#17202a"
+    backgroundColor: "#9d4edd",
+    borderColor: "#9d4edd",
+    shadowColor: "#9d4edd",
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3
   },
   tabText: {
-    color: "#17202a",
-    fontWeight: "600"
+    color: MOBILE_TOUCH_TARGETS.inactiveTextColor,
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1
   },
   activeTabText: {
     color: "#ffffff",
-    fontWeight: "600"
+    fontFamily: "SpaceMono_700Bold",
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1
   },
   listContent: {
     paddingBottom: 32,
-    gap: 12
-  },
-  feedPane: {
-    flex: 1
-  },
-  feedHeader: {
-    marginBottom: 14,
-    gap: 12
-  },
-  feedHeaderCopy: {
     gap: 8
   },
+  feedPane: {
+    flex: 1,
+    minHeight: 0
+  },
+  feedHeader: {
+    marginBottom: 12,
+    gap: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start"
+  },
+  feedHeaderCopy: {
+    flex: 1,
+    gap: 4
+  },
   minePane: {
-    flex: 1
+    flex: 1,
+    minHeight: 0
   },
   card: {
-    padding: 16,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.92)"
+    padding: 14,
+    borderRadius: 3,
+    backgroundColor: "#111122",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    borderLeftWidth: 3,
+    borderLeftColor: "#4a4a6a"
   },
   cardMeta: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 10,
-    gap: 12
+    gap: 8
   },
   cardBadges: {
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
     flexWrap: "wrap",
     justifyContent: "flex-end"
   },
   metaText: {
-    color: "#6b6d76",
-    fontSize: 12
+    color: "#4a4a6a",
+    fontSize: 10,
+    fontFamily: "SpaceMono_400Regular",
+    textTransform: "uppercase",
+    letterSpacing: 0.8
   },
   pill: {
-    color: "#8f4b2d",
-    backgroundColor: "#f7d9c5",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    color: "#9d4edd",
+    backgroundColor: "rgba(157,78,221,0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 3,
     overflow: "hidden",
-    textTransform: "capitalize"
+    fontSize: 10,
+    fontFamily: "SpaceMono_400Regular",
+    textTransform: "uppercase"
   },
   privatePill: {
-    color: "#17202a",
-    backgroundColor: "rgba(23,32,42,0.08)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
+    color: "#ff3366",
+    backgroundColor: "rgba(255,51,102,0.1)",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 3,
     overflow: "hidden",
+    fontSize: 10,
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "lowercase"
   },
   cardText: {
-    color: "#17202a",
+    color: "#e0e0f0",
+    fontFamily: "Inter_400Regular",
     fontSize: 15,
-    lineHeight: 24
+    lineHeight: 26
   },
   emptyState: {
     padding: 20,
-    borderRadius: 22,
+    borderRadius: 3,
     borderWidth: 1,
-    borderColor: "rgba(23,32,42,0.12)",
+    borderColor: "rgba(157,78,221,0.18)",
     borderStyle: "dashed"
   },
   emptyText: {
-    color: "#566573",
-    textAlign: "center"
+    color: "#4a4a6a",
+    textAlign: "center",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 12
   },
   composePane: {
+    flexGrow: 1,
     paddingBottom: 32
   },
   sectionTitle: {
-    fontSize: 26,
-    fontWeight: "700",
-    color: "#17202a"
+    fontSize: 18,
+    fontFamily: "SpaceMono_700Bold",
+    color: "#9d4edd",
+    textTransform: "uppercase",
+    letterSpacing: 1.5
   },
   sectionSubtitle: {
-    marginTop: 8,
-    marginBottom: 14,
-    color: "#566573",
-    lineHeight: 22
+    marginTop: 6,
+    marginBottom: 12,
+    color: "#4a4a6a",
+    lineHeight: 20,
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 12
   },
   filterPanel: {
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.84)",
-    gap: 8
+    marginBottom: 10,
+    padding: 14,
+    borderRadius: 3,
+    backgroundColor: "#111122",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    gap: 6
   },
   filterEyebrow: {
-    fontSize: 11,
+    fontSize: 9,
+    fontFamily: "SpaceMono_400Regular",
     textTransform: "uppercase",
     letterSpacing: 2,
-    color: "#6b6d76"
+    color: "#9d4edd"
   },
   filterTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#17202a"
+    fontSize: 16,
+    fontFamily: "SpaceMono_700Bold",
+    color: "#e0e0f0"
   },
   filterCopy: {
-    color: "#566573",
-    lineHeight: 22
+    color: "#4a4a6a",
+    lineHeight: 20,
+    fontSize: 12
   },
   filterScroller: {
-    marginBottom: 10
+    marginBottom: 8
   },
   filterChip: {
-    marginRight: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.9)"
+    minHeight: MOBILE_TOUCH_TARGETS.chipMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 3,
+    backgroundColor: "#111122",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)"
   },
   activeFilterChip: {
-    backgroundColor: "#17202a"
+    backgroundColor: "#9d4edd",
+    borderColor: "#9d4edd"
   },
   disabledFilterChip: {
-    opacity: 0.45
+    opacity: 0.28
   },
   filterChipText: {
-    color: "#17202a",
-    fontWeight: "600"
+    color: MOBILE_TOUCH_TARGETS.inactiveTextColor,
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11,
+    textTransform: "uppercase"
   },
   activeFilterChipText: {
-    color: "#ffffff"
+    color: "#ffffff",
+    fontFamily: "SpaceMono_700Bold"
   },
   filterNote: {
-    marginBottom: 12,
-    color: "#566573",
-    fontSize: 13,
-    lineHeight: 20
+    marginBottom: 10,
+    color: "#4a4a6a",
+    fontSize: 11,
+    lineHeight: 18,
+    fontFamily: "SpaceMono_400Regular"
   },
   textArea: {
     minHeight: 180,
     padding: 16,
-    borderRadius: 24,
-    backgroundColor: "rgba(255,255,255,0.94)",
-    color: "#17202a",
-    fontSize: 16,
+    borderRadius: 3,
+    backgroundColor: "#111122",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    color: "#e0e0f0",
+    fontFamily: "Inter_400Regular",
+    fontSize: 15,
     lineHeight: 24
   },
   moodScroller: {
-    marginTop: 14,
-    marginBottom: 12
+    marginTop: 12,
+    marginBottom: 10
   },
   privateRow: {
     marginBottom: 12,
@@ -879,95 +1010,131 @@ const styles = StyleSheet.create({
     flex: 1
   },
   privateLabel: {
-    color: "#17202a",
-    fontSize: 15,
-    fontWeight: "600"
+    color: "#e0e0f0",
+    fontFamily: "Inter_600SemiBold",
+    fontSize: 14
   },
   privateHint: {
     marginTop: 4,
-    color: "#566573",
-    lineHeight: 20
+    color: "#4a4a6a",
+    fontFamily: "Inter_400Regular",
+    lineHeight: 18,
+    fontSize: 12
   },
   moodChip: {
-    marginRight: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.9)"
+    minHeight: MOBILE_TOUCH_TARGETS.chipMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 3,
+    backgroundColor: "#111122",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)"
   },
   selectedMoodChip: {
-    backgroundColor: "#17202a"
+    backgroundColor: "#9d4edd",
+    borderColor: "#9d4edd"
   },
   moodChipText: {
-    color: "#17202a",
+    color: MOBILE_TOUCH_TARGETS.inactiveTextColor,
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 12,
     textTransform: "capitalize"
   },
   selectedMoodText: {
     color: "#ffffff",
+    fontFamily: "SpaceMono_700Bold",
+    fontSize: 12,
     textTransform: "capitalize"
   },
   helperText: {
-    color: "#566573"
+    color: "#4a4a6a",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11
   },
   statusText: {
     marginTop: 8,
-    color: "#566573"
+    color: "#4a4a6a",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11
   },
   errorText: {
     marginTop: 8,
-    color: "#b03a2e"
+    color: "#ff3366",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11
   },
   primaryButton: {
     marginTop: 16,
     paddingVertical: 14,
-    borderRadius: 999,
-    backgroundColor: "#17202a",
+    borderRadius: 3,
+    backgroundColor: "#9d4edd",
     alignItems: "center"
   },
   secondaryButton: {
     alignSelf: "flex-start",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.92)"
+    minHeight: MOBILE_TOUCH_TARGETS.actionButtonMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 3,
+    backgroundColor: "#111122",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)"
   },
   primaryButtonText: {
     color: "#ffffff",
-    fontSize: 15,
-    fontWeight: "600"
+    fontSize: 14,
+    fontFamily: "SpaceMono_700Bold"
   },
   secondaryButtonText: {
-    color: "#17202a",
-    fontWeight: "600"
+    color: MOBILE_TOUCH_TARGETS.inactiveTextColor,
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11
   },
   shareButton: {
     alignSelf: "flex-start",
-    marginTop: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: "#17202a"
+    marginTop: 12,
+    minHeight: MOBILE_TOUCH_TARGETS.actionButtonMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 3,
+    backgroundColor: "#111122",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)"
   },
   shareButtonText: {
-    color: "#ffffff",
-    fontWeight: "600"
+    color: "#9d4edd",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11
   },
   cardActionRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     flexWrap: "wrap",
-    marginTop: 14
+    marginTop: 12
   },
   deleteButton: {
     alignSelf: "flex-start",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 999,
-    backgroundColor: "#9f3b2f"
+    minHeight: MOBILE_TOUCH_TARGETS.actionButtonMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,51,102,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,51,102,0.22)"
   },
   deleteButtonText: {
-    color: "#ffffff",
-    fontWeight: "600"
+    color: "#ff3366",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11
   },
   hiddenShareCanvas: {
     position: "absolute",
@@ -979,41 +1146,45 @@ const styles = StyleSheet.create({
     width: 1080,
     minHeight: 1080,
     padding: 56,
-    backgroundColor: "#fcf6ea",
-    borderRadius: 64,
+    backgroundColor: "#07070f",
+    borderRadius: 0,
     justifyContent: "space-between"
   },
   shareCardEyebrow: {
-    fontSize: 26,
-    letterSpacing: 8,
-    color: "#566573"
+    fontSize: 22,
+    letterSpacing: 10,
+    color: "#9d4edd",
+    fontFamily: "SpaceMono_400Regular"
   },
   shareCardTitle: {
     marginTop: 26,
-    fontSize: 68,
-    fontWeight: "700",
-    color: "#17202a"
+    fontSize: 60,
+    fontFamily: "SpaceMono_700Bold",
+    color: "#e0e0f0"
   },
   shareCardDate: {
     marginTop: 18,
-    fontSize: 24,
-    color: "#566573"
+    fontSize: 22,
+    color: "#4a4a6a",
+    fontFamily: "SpaceMono_400Regular"
   },
   shareCardBody: {
     marginTop: 84,
-    fontSize: 44,
-    lineHeight: 64,
-    color: "#17202a"
+    fontSize: 42,
+    lineHeight: 60,
+    color: "#e0e0f0"
   },
   shareCardMood: {
     marginTop: 36,
-    fontSize: 30,
-    color: "#8f4b2d",
-    textTransform: "capitalize"
+    fontSize: 28,
+    color: "#9d4edd",
+    fontFamily: "SpaceMono_400Regular",
+    textTransform: "uppercase"
   },
   shareCardFooter: {
     marginTop: 120,
-    fontSize: 24,
-    color: "#566573"
+    fontSize: 22,
+    color: "#4a4a6a",
+    fontFamily: "SpaceMono_400Regular"
   }
 });

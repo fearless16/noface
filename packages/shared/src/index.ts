@@ -12,6 +12,15 @@ export const MOODS = [
 
 export type Mood = (typeof MOODS)[number];
 
+export const MOOD_EMOJI: Record<Mood, string> = {
+  sad: "🌧️",
+  angry: "🔥",
+  regret: "💀",
+  happy: "🖤",
+  anxious: "🕷️",
+  hopeful: "🌙"
+};
+
 export type Confession = {
   id: string;
   userId: string;
@@ -75,7 +84,7 @@ export function createAnonymousUserId(): string {
   };
 
   if (cryptoObject.crypto?.randomUUID) {
-    return cryptoObject.crypto.randomUUID();
+    return cryptoObject.crypto.randomUUID.call(cryptoObject.crypto);
   }
 
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {
@@ -254,6 +263,51 @@ export const DEMO_CONFESSIONS: Confession[] = [
     mood: "regret",
     isPrivate: false,
     createdAt: "2026-04-24T18:05:00.000Z",
+    source: "local"
+  },
+  {
+    id: "demo-4",
+    userId: "anon-demo",
+    text: "I smiled through dinner and nodded at all the right times, but the whole evening I wanted to admit I am exhausted and scared of disappointing everyone.",
+    mood: "sad",
+    isPrivate: false,
+    createdAt: "2026-04-24T16:34:00.000Z",
+    source: "local"
+  },
+  {
+    id: "demo-5",
+    userId: "anon-demo",
+    text: "I keep drafting the resignation email and then closing the laptop because staying feels impossible and leaving feels worse.",
+    mood: "angry",
+    isPrivate: false,
+    createdAt: "2026-04-24T13:12:00.000Z",
+    source: "local"
+  },
+  {
+    id: "demo-6",
+    userId: "anon-demo",
+    text: "Someone told me I looked lighter today and I did not say it was because I finally slept without replaying the worst month of my life.",
+    mood: "happy",
+    isPrivate: false,
+    createdAt: "2026-04-24T10:47:00.000Z",
+    source: "local"
+  },
+  {
+    id: "demo-7",
+    userId: "anon-demo",
+    text: "Every notification makes my chest tighten because I am waiting for news I cannot control and pretending that uncertainty has not taken over my whole week.",
+    mood: "anxious",
+    isPrivate: false,
+    createdAt: "2026-04-24T08:19:00.000Z",
+    source: "local"
+  },
+  {
+    id: "demo-8",
+    userId: "anon-demo",
+    text: "I am not healed yet, but I finally believe the version of me from six months ago would be proud that I kept going.",
+    mood: "hopeful",
+    isPrivate: false,
+    createdAt: "2026-04-24T06:05:00.000Z",
     source: "local"
   }
 ];

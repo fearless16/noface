@@ -47,7 +47,22 @@ async function readLocalConfessions(): Promise<Confession[]> {
     return [];
   }
 
-  return sortConfessionsDescending(JSON.parse(storedConfessions) as Confession[]);
+  const parsedConfessions = JSON.parse(storedConfessions) as Confession[];
+  const existingIds = new Set(parsedConfessions.map((confession) => confession.id));
+  const missingSeedConfessions = DEMO_CONFESSIONS.filter((confession) => !existingIds.has(confession.id));
+
+  if (missingSeedConfessions.length === 0) {
+    return sortConfessionsDescending(parsedConfessions);
+  }
+
+  const mergedConfessions = sortConfessionsDescending([
+    ...parsedConfessions,
+    ...missingSeedConfessions
+  ]);
+
+  await writeLocalConfessions(mergedConfessions);
+
+  return mergedConfessions;
 }
 
 async function readPublicLocalConfessions(): Promise<Confession[]> {

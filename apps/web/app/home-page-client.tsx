@@ -16,18 +16,19 @@ import {
   isPremiumFeedFilter,
   type Mood,
   MAX_CONFESSION_LENGTH,
+  MOOD_EMOJI,
   MOODS,
   validateConfession
 } from "@noface/shared";
 import {
   canDeleteMyConfessions,
   deleteMyConfession,
-  isSupabaseConfigured,
   loadFeedPage,
   loadMyConfessions,
   publishConfession,
   resolveAnonymousUserId
 } from "../lib/confessions";
+
 
 type View = "feed" | "write" | "mine";
 
@@ -41,7 +42,6 @@ const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
 
 export default function HomePageClient({
   initialFeed,
-  hasServerSupabase
 }: HomePageClientProps) {
   const [currentView, setCurrentView] = useState<View>("feed");
   const [userId, setUserId] = useState<string>("");
@@ -61,8 +61,8 @@ export default function HomePageClient({
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const isSharingRef = useRef(false);
 
-  const isDemoMode = useMemo(() => !hasServerSupabase && !isSupabaseConfigured(), [hasServerSupabase]);
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
   const visibleFeed = filteredFeed.slice(0, visibleCount);
@@ -237,9 +237,11 @@ export default function HomePageClient({
   }
 
   async function handleShare(confession: Confession) {
+    if (isSharingRef.current) return;
     const shareText = buildConfessionShareText(confession);
 
     try {
+      isSharingRef.current = true;
       if (typeof navigator !== "undefined" && navigator.share) {
         await navigator.share({
           title: "Noface confession",
@@ -257,8 +259,11 @@ export default function HomePageClient({
 
       setShareMessage("Web sharing is not available in this browser.");
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
       console.error(error);
       setShareMessage("Unable to share right now.");
+    } finally {
+      isSharingRef.current = false;
     }
   }
 
@@ -341,36 +346,27 @@ export default function HomePageClient({
       <section className="hero">
         <div>
           <p className="eyebrow">anonymous daily confession app</p>
-          <h1>Say it without becoming it.</h1>
+          <h1>Say it without <em>becoming</em> it.</h1>
         </div>
         <p>
-          Noface keeps the loop simple: generate a local anonymous id, write one honest note,
-          and read what strangers are carrying today. No profiles, no replies, no social score.
+          // generate a ghost id. write one honest note. read what strangers carry.
+          // no profiles. no replies. no social score. just words in the dark.
         </p>
         <div className="hero-grid">
           <article className="metric">
-            <span>Mode</span>
-            <strong>{isDemoMode ? "Demo" : "Supabase"}</strong>
-          </article>
-          <article className="metric">
-            <span>Feed items</span>
+            <span>// confessions</span>
             <strong>{hasMoreFeed ? `${filteredFeed.length}+` : filteredFeed.length}</strong>
           </article>
           <article className="metric">
-            <span>My confessions</span>
+            <span>// mine</span>
             <strong>{mine.length}</strong>
           </article>
           <article className="metric">
-            <span>User id</span>
-            <strong>{userId ? `${userId.slice(0, 8)}...` : "loading"}</strong>
+            <span>// ghost id</span>
+            <strong>{userId ? `${userId.slice(0, 8)}` : "···"}</strong>
           </article>
         </div>
-        <div className="mode-banner">
-          {isDemoMode
-            ? "Running in local demo mode until Supabase credentials are added."
-            : "Live mode connected to Supabase."}
-        </div>
-        {shareMessage ? <div className="mode-banner">{shareMessage}</div> : null}
+        {shareMessage ? <div className="share-banner">{shareMessage}</div> : null}
       </section>
 
       <nav className="tabs" aria-label="Primary views">
@@ -394,8 +390,8 @@ export default function HomePageClient({
         <section className="panel">
           <div className="panel-header">
             <div>
-              <h2>Today&apos;s confessions</h2>
-              <p>Infinite scroll, stripped back to text and mood only.</p>
+              <h2>// confessions</h2>
+              <p>anonymous. infinite. stripped to text and mood only.</p>
             </div>
             <button className="ghost" onClick={() => setCurrentView("write")} type="button">
               Write now
@@ -455,7 +451,7 @@ export default function HomePageClient({
                   onClick={() => handleMoodFilterSelect(mood)}
                   type="button"
                 >
-                  {mood}
+                  {MOOD_EMOJI[mood] ?? ""} {mood}
                 </button>
               ))}
             </div>
@@ -469,12 +465,14 @@ export default function HomePageClient({
 
           <div className="feed">
             {visibleFeed.map((confession) => (
-              <article className="card" key={confession.id}>
+              <article className="card" data-mood={confession.mood ?? undefined} key={confession.id}>
                 <div className="card-meta">
-                  <span>
-                    {formatConfessionDate(confession.createdAt)}
-                  </span>
-                  {confession.mood ? <span className="pill">{confession.mood}</span> : null}
+                  <span className="card-date">{formatConfessionDate(confession.createdAt)}</span>
+                  {confession.mood ? (
+                    <span className="pill" data-mood={confession.mood}>
+                      {MOOD_EMOJI[confession.mood] ?? ""} {confession.mood}
+                    </span>
+                  ) : null}
                 </div>
                 <p>{confession.text}</p>
                 <div className="card-actions">
@@ -497,7 +495,7 @@ export default function HomePageClient({
             ) : null}
 
             <div aria-hidden className="sentinel" ref={sentinelRef} />
-            {isLoadingFeedPage ? <div className="empty">Loading more confessions...</div> : null}
+            {isLoadingFeedPage ? <div className="loading-row">// loading more...</div> : null}
           </div>
         </section>
       ) : null}
@@ -506,8 +504,8 @@ export default function HomePageClient({
         <section className="panel">
           <div className="panel-header">
             <div>
-              <h2>Write anonymously</h2>
-              <p>Up to {MAX_CONFESSION_LENGTH} characters. Nothing attached except your local id.</p>
+              <h2>// write</h2>
+              <p>up to {MAX_CONFESSION_LENGTH} chars. nothing attached except your ghost id.</p>
             </div>
           </div>
 
@@ -515,7 +513,7 @@ export default function HomePageClient({
             <textarea
               maxLength={MAX_CONFESSION_LENGTH}
               onChange={(event) => setText(event.target.value)}
-              placeholder="Say the thing you would never post under your real name."
+              placeholder="// say the thing you’d never post under your real name."
               value={text}
             />
 
@@ -568,8 +566,8 @@ export default function HomePageClient({
         <section className="panel">
           <div className="panel-header">
             <div>
-              <h2>My confessions</h2>
-              <p>Everything written by this local anonymous id, newest first.</p>
+              <h2>// mine</h2>
+              <p>everything written under this ghost id, newest first.</p>
               {!canDelete ? <p>Delete stays disabled in live mode until trusted identity exists.</p> : null}
             </div>
             <button className="ghost" onClick={() => setCurrentView("write")} type="button">
@@ -579,12 +577,16 @@ export default function HomePageClient({
 
           <div className="feed">
             {mine.map((confession) => (
-              <article className="card" key={confession.id}>
+              <article className="card" data-mood={confession.mood ?? undefined} key={confession.id}>
                 <div className="card-meta">
-                  <span>{formatConfessionDate(confession.createdAt)}</span>
+                  <span className="card-date">{formatConfessionDate(confession.createdAt)}</span>
                   <div className="card-badges">
-                    {confession.isPrivate ? <span className="pill private">private</span> : null}
-                    {confession.mood ? <span className="pill">{confession.mood}</span> : null}
+                    {confession.isPrivate ? <span className="pill private">🔒 private</span> : null}
+                    {confession.mood ? (
+                      <span className="pill" data-mood={confession.mood}>
+                        {MOOD_EMOJI[confession.mood] ?? ""} {confession.mood}
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <p>{confession.text}</p>

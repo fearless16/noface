@@ -61,6 +61,7 @@ export default function HomePageClient({
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const isSharingRef = useRef(false);
 
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
@@ -236,9 +237,11 @@ export default function HomePageClient({
   }
 
   async function handleShare(confession: Confession) {
+    if (isSharingRef.current) return;
     const shareText = buildConfessionShareText(confession);
 
     try {
+      isSharingRef.current = true;
       if (typeof navigator !== "undefined" && navigator.share) {
         await navigator.share({
           title: "Noface confession",
@@ -256,8 +259,11 @@ export default function HomePageClient({
 
       setShareMessage("Web sharing is not available in this browser.");
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") return;
       console.error(error);
       setShareMessage("Unable to share right now.");
+    } finally {
+      isSharingRef.current = false;
     }
   }
 

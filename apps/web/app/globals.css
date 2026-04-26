@@ -1,8 +1,8 @@
 /* ── TOKENS ─────────────────────────────────────────── */
 :root {
-  --bg: #07070f;
-  --surface: #0d0d1a;
-  --surface-2: #111122;
+  --bg: #050508;
+  --surface: #0a0a14;
+  --surface-2: #0e0e1c;
   --text: #e0e0f0;
   --muted: #4a4a6a;
   --accent: #9d4edd;
@@ -199,22 +199,38 @@ select {
 
 .ghost {
   background: transparent;
-  color: var(--muted);
+  color: #a0a0c0;
   border: 1px solid var(--line);
 }
 
 .danger {
   background: rgba(255, 51, 102, 0.12);
-  color: var(--accent-2);
+  color: #ff3366;
   border: 1px solid rgba(255, 51, 102, 0.22);
 }
 
-.tab:hover,
-.primary:hover,
-.ghost:hover,
+.tab:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 32px var(--accent-glow), 0 4px 16px rgba(0,0,0,0.4);
+}
+
+.ghost:hover {
+  transform: translateY(-1px);
+  color: var(--text);
+  border-color: rgba(157, 78, 221, 0.5);
+  background: rgba(157, 78, 221, 0.08);
+}
+
 .danger:hover {
   transform: translateY(-1px);
-  opacity: 0.88;
+  background: rgba(255, 51, 102, 0.22);
+  box-shadow: 0 0 16px rgba(255, 51, 102, 0.2);
 }
 
 /* ── PANEL ──────────────────────────────────────────── */

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type Confession,
+  createAnonymousUsername,
   DEMO_CONFESSIONS,
   MAX_CONFESSION_LENGTH,
   MOOD_EMOJI,
@@ -8,7 +9,9 @@ import {
   applyFeedFilters,
   buildConfessionShareText,
   createAnonymousUserId,
+  createSecretIdentity,
   createDefaultFeedFilters,
+  formatSecretId,
   fromRow,
   getFeedFilterLabel,
   isPremiumFeedFilter,
@@ -68,6 +71,33 @@ describe("createAnonymousUserId", () => {
     const a = createAnonymousUserId();
     const b = createAnonymousUserId();
     expect(a).not.toBe(b);
+  });
+});
+
+describe("identity helpers", () => {
+  it("derives a deterministic username from a secret id", () => {
+    expect(createAnonymousUsername("00000000-0000-4000-8000-000000000001")).toBe(
+      createAnonymousUsername("00000000-0000-4000-8000-000000000001")
+    );
+  });
+
+  it("creates different usernames for different secret ids", () => {
+    expect(createAnonymousUsername("00000000-0000-4000-8000-000000000001")).not.toBe(
+      createAnonymousUsername("00000000-0000-4000-8000-000000000002")
+    );
+  });
+
+  it("creates a secret identity with the original id and generated username", () => {
+    expect(createSecretIdentity("00000000-0000-4000-8000-000000000001")).toEqual({
+      secretId: "00000000-0000-4000-8000-000000000001",
+      username: createAnonymousUsername("00000000-0000-4000-8000-000000000001")
+    });
+  });
+
+  it("formats the secret id for premium display", () => {
+    expect(formatSecretId("00000000-0000-4000-8000-000000000001")).toBe(
+      "00000000 0000 4000 8000 000000000001"
+    );
   });
 });
 

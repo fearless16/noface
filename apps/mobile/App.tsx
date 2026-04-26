@@ -23,10 +23,12 @@ import {
   applyFeedFilters,
   buildConfessionShareText,
   type Confession,
+  createSecretIdentity,
   createDefaultFeedFilters,
   FEED_PAGE_FETCH_SIZE,
   type FeedFilter,
   type FeedFilters,
+  formatSecretId,
   formatConfessionDate,
   getFeedFilterLabel,
   isPremiumFeedFilter,
@@ -50,7 +52,7 @@ import {
   MOBILE_WRITE_SCROLL_PROPS
 } from "./src/ui-contract";
 
-type ViewMode = "feed" | "write" | "mine";
+type ViewMode = "activity" | "feed" | "write" | "mine";
 
 const PAGE_SIZE = 8;
 const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
@@ -79,7 +81,7 @@ export default function App() {
 }
 
 export function AppContent() {
-  const [viewMode, setViewMode] = useState<ViewMode>("feed");
+  const [viewMode, setViewMode] = useState<ViewMode>("activity");
   const [userId, setUserId] = useState("");
   const [feed, setFeed] = useState<Confession[]>([]);
   const [mine, setMine] = useState<Confession[]>([]);
@@ -100,6 +102,36 @@ export function AppContent() {
 
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
+  const identity = useMemo(() => {
+    if (!userId) {
+      return null;
+    }
+
+    return createSecretIdentity(userId);
+  }, [userId]);
+  const dominantMood = useMemo(() => {
+    const moodCounts = new Map<Mood, number>();
+
+    for (const confession of feed) {
+      if (!confession.mood) {
+        continue;
+      }
+
+      moodCounts.set(confession.mood, (moodCounts.get(confession.mood) ?? 0) + 1);
+    }
+
+    let currentMood: Mood | null = null;
+    let currentCount = -1;
+
+    for (const [mood, count] of moodCounts) {
+      if (count > currentCount) {
+        currentMood = mood;
+        currentCount = count;
+      }
+    }
+
+    return currentMood;
+  }, [feed]);
 
   const loadNextFeedPage = useCallback(async () => {
     if (isLoadingFeedPage || !hasMoreFeed) {
@@ -352,22 +384,22 @@ export function AppContent() {
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         <View style={styles.hero}>
-          <Text style={styles.eyebrow}>// anonymous confession app</Text>
+          <Text style={styles.eyebrow}>// entry node</Text>
           <Text style={styles.title}>Noface</Text>
           <Text style={styles.subtitle}>
-            // ghost id. write once. read what strangers carry. no profiles, no score.
+            // blackout feed. assigned alias. one secret id. real words left in the dark.
           </Text>
           <View style={styles.metricsRow}>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>// confessions</Text>
+              <Text style={styles.metricLabel}>// public signal</Text>
               <Text style={styles.metricValue}>{hasMoreFeed ? `${filteredFeed.length}+` : filteredFeed.length}</Text>
             </View>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>// mine</Text>
-              <Text style={styles.metricValue}>{mine.length}</Text>
+              <Text style={styles.metricLabel}>// assigned alias</Text>
+              <Text style={styles.metricValue} numberOfLines={1}>{identity?.username ?? "···"}</Text>
             </View>
             <View style={styles.metricCard}>
-              <Text style={styles.metricLabel}>// ghost id</Text>
+              <Text style={styles.metricLabel}>// secret id</Text>
               <Text style={styles.metricValue}>{userId ? userId.slice(0, 8) : "···"}</Text>
             </View>
           </View>
@@ -375,6 +407,7 @@ export function AppContent() {
 
         <View style={styles.tabs}>
           {[
+            { label: "Activity", value: "activity" },
             { label: "Feed", value: "feed" },
             { label: "Write", value: "write" },
             { label: "Mine", value: "mine" }
@@ -390,6 +423,68 @@ export function AppContent() {
             </Pressable>
           ))}
         </View>
+
+        {viewMode === "activity" ? (
+          <ScrollView
+            alwaysBounceVertical={MOBILE_WRITE_SCROLL_PROPS.alwaysBounceVertical}
+            bounces={MOBILE_WRITE_SCROLL_PROPS.bounces}
+            contentContainerStyle={styles.activityPane}
+            keyboardShouldPersistTaps={MOBILE_WRITE_SCROLL_PROPS.keyboardShouldPersistTaps}
+            showsVerticalScrollIndicator={MOBILE_WRITE_SCROLL_PROPS.showsVerticalScrollIndicator}
+            style={styles.flex1}
+          >
+            <View style={styles.activityCard}>
+              <Text style={styles.filterEyebrow}>assigned automatically</Text>
+              <Text style={styles.activityTitle}>{identity?.username ?? "booting-alias"}</Text>
+              <Text style={styles.activityCopy}>
+                Your public alias is derived from the secret id below. Share the alias. Keep the full id private.
+              </Text>
+              <View style={styles.secretIdCard}>
+                <Text style={styles.metricLabel}>// secret id</Text>
+                <Text selectable style={styles.secretIdValue}>{identity ? formatSecretId(identity.secretId) : "···"}</Text>
+              </View>
+              <View style={styles.activityActionRow}>
+                <Pressable onPress={() => setViewMode("feed")} style={styles.primaryButton}>
+                  <Text style={styles.primaryButtonText}>Enter feed</Text>
+                </Pressable>
+                <Pressable onPress={() => setViewMode("write")} style={styles.secondaryButton}>
+                  <Text style={styles.secondaryButtonText}>Write now</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            <View style={styles.activityCard}>
+              <Text style={styles.filterEyebrow}>network pulse</Text>
+              <Text style={styles.activityTitle}>{dominantMood ? `${MOOD_EMOJI[dominantMood]} ${dominantMood}` : "No signal yet"}</Text>
+              <Text style={styles.activityCopy}>
+                Recommendations are still chronological today. This branch establishes the premium entry and identity layer first.
+              </Text>
+              <View style={styles.activityStatsRow}>
+                <View style={styles.activityStatCard}>
+                  <Text style={styles.metricLabel}>// public feed</Text>
+                  <Text style={styles.metricValue}>{filteredFeed.length}</Text>
+                </View>
+                <View style={styles.activityStatCard}>
+                  <Text style={styles.metricLabel}>// private archive</Text>
+                  <Text style={styles.metricValue}>{mine.filter((confession) => confession.isPrivate).length}</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.activityCard}>
+              <Text style={styles.filterEyebrow}>recent traffic</Text>
+              <Text style={styles.activityTitle}>Latest from the dark</Text>
+              {feed.slice(0, 3).map((confession) => (
+                <View key={confession.id} style={styles.activityRow}>
+                  <Text style={styles.metricLabel}>
+                    {confession.mood ? `${MOOD_EMOJI[confession.mood]} ${confession.mood}` : "raw"}
+                  </Text>
+                  <Text style={styles.activityRowText}>{confession.text}</Text>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        ) : null}
 
         {viewMode === "feed" ? (
           <View style={styles.feedPane}>
@@ -688,18 +783,18 @@ export const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: "#07070f"
+    backgroundColor: "#000000"
   },
   container: {
     flex: 1,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: "#07070f"
+    backgroundColor: "#000000"
   },
   hero: {
     padding: 20,
     borderRadius: 6,
-    backgroundColor: "#0d0d1a",
+    backgroundColor: "#050505",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)",
     borderLeftWidth: 2,
@@ -741,7 +836,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     padding: 10,
     borderRadius: 3,
-    backgroundColor: "#111122",
+    backgroundColor: "#0b0b0b",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)",
     borderLeftWidth: 2,
@@ -829,10 +924,78 @@ export const styles = StyleSheet.create({
     flex: 1,
     minHeight: 0
   },
+  activityPane: {
+    paddingBottom: 32,
+    gap: 12
+  },
+  activityCard: {
+    padding: 16,
+    borderRadius: 4,
+    backgroundColor: "#050505",
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    gap: 10
+  },
+  activityTitle: {
+    color: "#e0e0f0",
+    fontFamily: "SpaceMono_700Bold",
+    fontSize: 20
+  },
+  activityCopy: {
+    color: "#9797b4",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 12,
+    lineHeight: 20
+  },
+  secretIdCard: {
+    padding: 12,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    backgroundColor: "#000000",
+    gap: 6
+  },
+  secretIdValue: {
+    color: "#e0e0f0",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 12,
+    lineHeight: 21
+  },
+  activityActionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10
+  },
+  activityStatsRow: {
+    flexDirection: "row",
+    gap: 8
+  },
+  activityStatCard: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    backgroundColor: "rgba(255,255,255,0.01)"
+  },
+  activityRow: {
+    padding: 12,
+    borderRadius: 3,
+    borderWidth: 1,
+    borderColor: "rgba(157,78,221,0.18)",
+    backgroundColor: "rgba(255,255,255,0.01)",
+    gap: 6
+  },
+  activityRowText: {
+    color: "#e0e0f0",
+    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    lineHeight: 22
+  },
   card: {
     padding: 14,
     borderRadius: 3,
-    backgroundColor: "#111122",
+    backgroundColor: "#0b0b0b",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)",
     borderLeftWidth: 3,
@@ -922,7 +1085,7 @@ export const styles = StyleSheet.create({
     marginBottom: 10,
     padding: 14,
     borderRadius: 3,
-    backgroundColor: "#111122",
+    backgroundColor: "#0b0b0b",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)",
     gap: 6
@@ -955,7 +1118,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 3,
-    backgroundColor: "#111122",
+    backgroundColor: "#0b0b0b",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)"
   },
@@ -987,7 +1150,7 @@ export const styles = StyleSheet.create({
     minHeight: 180,
     padding: 16,
     borderRadius: 3,
-    backgroundColor: "#111122",
+    backgroundColor: "#0b0b0b",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)",
     color: "#e0e0f0",
@@ -1029,7 +1192,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 3,
-    backgroundColor: "#111122",
+    backgroundColor: "#0b0b0b",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)"
   },
@@ -1081,7 +1244,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 3,
-    backgroundColor: "#111122",
+    backgroundColor: "#0b0b0b",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)"
   },
@@ -1104,7 +1267,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 3,
-    backgroundColor: "#111122",
+    backgroundColor: "#0b0b0b",
     borderWidth: 1,
     borderColor: "rgba(157,78,221,0.18)"
   },
@@ -1146,7 +1309,7 @@ export const styles = StyleSheet.create({
     width: 1080,
     minHeight: 1080,
     padding: 56,
-    backgroundColor: "#07070f",
+    backgroundColor: "#000000",
     borderRadius: 0,
     justifyContent: "space-between"
   },

@@ -1,8 +1,8 @@
 /* ── TOKENS ─────────────────────────────────────────── */
 :root {
-  --bg: #050508;
-  --surface: #0a0a14;
-  --surface-2: #0e0e1c;
+  --bg: #000000;
+  --surface: #050505;
+  --surface-2: #0b0b0b;
   --text: #e0e0f0;
   --muted: #4a4a6a;
   --accent: #9d4edd;
@@ -27,8 +27,8 @@ body {
   min-height: 100vh;
   color: var(--text);
   background:
-    radial-gradient(ellipse 80% 40% at 10% 0%, rgba(157, 78, 221, 0.1) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 30% at 90% 100%, rgba(255, 51, 102, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 40% at 10% 0%, rgba(157, 78, 221, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 30% at 90% 100%, rgba(255, 51, 102, 0.05) 0%, transparent 60%),
     var(--bg);
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
 }
@@ -240,6 +240,118 @@ select {
   border: 1px solid var(--line);
   background: var(--surface);
   box-shadow: var(--shadow);
+}
+
+.activity-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 30%),
+    var(--surface);
+}
+
+.activity-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.identity-card,
+.activity-card {
+  display: grid;
+  gap: 0.9rem;
+  min-height: 100%;
+  padding: 1.2rem;
+  border-radius: 4px;
+  border: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(157, 78, 221, 0.04), transparent 24%),
+    var(--surface-2);
+}
+
+.identity-card h3,
+.activity-card h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.identity-copy {
+  margin: 0;
+  color: #9797b4;
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  line-height: 1.8;
+}
+
+.identity-secret {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: #000;
+}
+
+.identity-secret span,
+.activity-stats span,
+.activity-row span {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.identity-secret strong {
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  line-height: 1.8;
+  word-break: break-word;
+}
+
+.identity-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.activity-stats {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.activity-stats div {
+  padding: 0.85rem;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.activity-stats strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--text);
+  font-size: 1.2rem;
+}
+
+.activity-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.activity-row {
+  padding: 0.9rem 1rem;
+  border-radius: 3px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.activity-row p {
+  margin: 0.4rem 0 0;
+  color: var(--text);
+  line-height: 1.7;
 }
 
 .panel-header {

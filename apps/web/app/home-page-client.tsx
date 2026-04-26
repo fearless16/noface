@@ -3,8 +3,6 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   applyFeedFilters,
-  buildConfessionShareCardSvg,
-  buildConfessionShareFileName,
   buildConfessionShareText,
   type Confession,
   createAnonymousUsername,
@@ -42,7 +40,6 @@ type HomePageClientProps = {
 };
 
 const PAGE_SIZE = 8;
-const CONFESSION_EXPAND_THRESHOLD = 220;
 const FEED_FILTER_OPTIONS: FeedFilter[] = ["recommended", "all", "mood", "short", "long"];
 
 export default function HomePageClient({
@@ -306,20 +303,6 @@ export default function HomePageClient({
     } finally {
       isSharingRef.current = false;
     }
-  }
-
-  function handleDownloadCard(confession: Confession) {
-    const svg = buildConfessionShareCardSvg(confession);
-    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
-    const objectUrl = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-
-    anchor.href = objectUrl;
-    anchor.download = buildConfessionShareFileName(confession);
-    anchor.click();
-
-    URL.revokeObjectURL(objectUrl);
-    setShareMessage("Share card downloaded.");
   }
 
   async function handleDelete(confession: Confession) {
@@ -594,9 +577,6 @@ export default function HomePageClient({
                   <button className="ghost small" onClick={() => void handleShare(confession)} type="button">
                     Share
                   </button>
-                  <button className="ghost small" onClick={() => handleDownloadCard(confession)} type="button">
-                    Download card
-                  </button>
                 </div>
               </article>
             ))}
@@ -714,9 +694,6 @@ export default function HomePageClient({
                   <button className="ghost small" onClick={() => void handleShare(confession)} type="button">
                     Share
                   </button>
-                  <button className="ghost small" onClick={() => handleDownloadCard(confession)} type="button">
-                    Download card
-                  </button>
                   <button className="danger small" onClick={() => void handleDelete(confession)} type="button">
                     Delete
                   </button>
@@ -736,11 +713,40 @@ export default function HomePageClient({
 
 function ExpandableConfessionText({ confession }: { confession: Confession }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const canExpand = confession.text.trim().length > CONFESSION_EXPAND_THRESHOLD;
+  const [canExpand, setCanExpand] = useState(false);
+  const bodyRef = useRef<HTMLParagraphElement | null>(null);
+
+  useEffect(() => {
+    setIsExpanded(false);
+    setCanExpand(false);
+  }, [confession.id, confession.text]);
+
+  useEffect(() => {
+    const body = bodyRef.current;
+
+    if (!body) {
+      return;
+    }
+
+    if (isExpanded) {
+      setCanExpand(true);
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      const nextCanExpand = body.scrollHeight > body.clientHeight + 1;
+
+      setCanExpand((current) => (current === nextCanExpand ? current : nextCanExpand));
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [confession.text, isExpanded]);
 
   return (
     <div className="confession-copy">
-      <p className={`confession-body${canExpand && !isExpanded ? " is-collapsed" : ""}`}>{confession.text}</p>
+      <p className={`confession-body${!isExpanded ? " is-collapsed" : ""}`} ref={bodyRef}>
+        {confession.text}
+      </p>
       {canExpand ? (
         <button
           aria-expanded={isExpanded}

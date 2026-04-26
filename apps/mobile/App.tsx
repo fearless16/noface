@@ -6,6 +6,7 @@ import * as SplashScreen from "expo-splash-screen";
 import {
   Alert,
   FlatList,
+  type NativeSyntheticEvent,
   Platform,
   Pressable,
   Share,
@@ -14,6 +15,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  type TextLayoutEventData,
   TextInput,
   View
 } from "react-native";
@@ -56,7 +58,6 @@ import {
 type ViewMode = "activity" | "feed" | "write" | "mine";
 
 const PAGE_SIZE = 8;
-const CONFESSION_EXPAND_THRESHOLD = 220;
 const CONFESSION_PREVIEW_LINES = 5;
 const FEED_FILTER_OPTIONS: FeedFilter[] = ["recommended", "all", "mood", "short", "long"];
 
@@ -819,12 +820,25 @@ function waitForNextFrame(): Promise<void> {
 
 function ExpandableConfessionText({ text }: { text: string }) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const canExpand = text.trim().length > CONFESSION_EXPAND_THRESHOLD;
+  const [canExpand, setCanExpand] = useState(false);
+
+  useEffect(() => {
+    setIsExpanded(false);
+    setCanExpand(false);
+  }, [text]);
+
+  const handleTextLayout = useCallback((event: NativeSyntheticEvent<TextLayoutEventData>) => {
+    const nextCanExpand = event.nativeEvent.lines.length > CONFESSION_PREVIEW_LINES;
+
+    setCanExpand((current) => (current === nextCanExpand ? current : nextCanExpand));
+  }, []);
 
   return (
     <View style={styles.expandableTextBlock}>
       <Text
-        numberOfLines={canExpand && !isExpanded ? CONFESSION_PREVIEW_LINES : undefined}
+        ellipsizeMode="tail"
+        numberOfLines={isExpanded ? undefined : CONFESSION_PREVIEW_LINES}
+        onTextLayout={handleTextLayout}
         style={styles.cardText}
       >
         {text}

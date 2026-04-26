@@ -97,12 +97,12 @@ describe("App.tsx wiring", () => {
   });
 
   it("wires long confessions to the expandable mobile reader", () => {
-    expect(appSource).toContain("const CONFESSION_EXPAND_THRESHOLD = 220");
     expect(appSource).toContain("const CONFESSION_PREVIEW_LINES = 5");
     expect(appSource).toContain("<ExpandableConfessionText text={item.text} />");
-    expect(appSource).toContain(
-      "numberOfLines={canExpand && !isExpanded ? CONFESSION_PREVIEW_LINES : undefined}"
-    );
+    expect(appSource).toContain('ellipsizeMode="tail"');
+    expect(appSource).toContain("onTextLayout={handleTextLayout}");
+    expect(appSource).toContain("event.nativeEvent.lines.length > CONFESSION_PREVIEW_LINES");
+    expect(appSource).toContain("numberOfLines={isExpanded ? undefined : CONFESSION_PREVIEW_LINES}");
     expect(appSource).toContain('{isExpanded ? "Show less" : "Show more"}');
   });
 

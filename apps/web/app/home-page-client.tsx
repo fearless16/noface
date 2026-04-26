@@ -41,7 +41,7 @@ type HomePageClientProps = {
 };
 
 const PAGE_SIZE = 8;
-const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
+const FEED_FILTER_OPTIONS: FeedFilter[] = ["recommended", "all", "mood", "short", "long"];
 
 export default function HomePageClient({
   initialFeed,
@@ -54,7 +54,7 @@ export default function HomePageClient({
   const [selectedMood, setSelectedMood] = useState<Mood | "">("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [feedFilters, setFeedFilters] = useState<FeedFilters>(() => createDefaultFeedFilters());
-  const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false);
+  const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(true);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [feedOffset, setFeedOffset] = useState(initialFeed.length);
   const [hasMoreFeed, setHasMoreFeed] = useState(initialFeed.length === FEED_PAGE_FETCH_SIZE);
@@ -67,7 +67,12 @@ export default function HomePageClient({
   const isSharingRef = useRef(false);
 
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
-  const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
+  const filteredFeed = useMemo(() => {
+    return applyFeedFilters(feed, feedFilters, {
+      viewerUserId: userId,
+      myConfessions: mine
+    });
+  }, [feed, feedFilters, mine, userId]);
   const visibleFeed = filteredFeed.slice(0, visibleCount);
   const identity = useMemo(() => {
     if (!userId) {
@@ -366,12 +371,19 @@ export default function HomePageClient({
       const next = !current;
 
       if (!next) {
-        setFeedFilters(createDefaultFeedFilters());
+        setFeedFilters({ filter: "all", mood: "all" });
       }
 
       return next;
     });
     setVisibleCount(PAGE_SIZE);
+  }
+
+  function openRecommendedFeed() {
+    setIsPremiumPreviewEnabled(true);
+    setFeedFilters(createDefaultFeedFilters());
+    setVisibleCount(PAGE_SIZE);
+    setCurrentView("feed");
   }
 
   return (
@@ -426,7 +438,7 @@ export default function HomePageClient({
               <h2>// activity</h2>
               <p>your access card, live network pulse, and the fastest way into the feed.</p>
             </div>
-            <button className="primary" onClick={() => setCurrentView("feed")} type="button">
+            <button className="primary" onClick={openRecommendedFeed} type="button">
               Enter feed
             </button>
           </div>
@@ -456,7 +468,7 @@ export default function HomePageClient({
               <p className="filter-eyebrow">network pulse</p>
               <h3>{dominantMood ? `${MOOD_EMOJI[dominantMood]} ${dominantMood}` : "No signal yet"}</h3>
               <p className="identity-copy">
-                Recommendations are still chronological today. This branch sets the premium entry and identity foundations first.
+                The feed now prioritizes confessions that match your writing pattern, dominant mood, and the freshest public traffic.
               </p>
               <div className="activity-stats">
                 <div>
@@ -503,7 +515,7 @@ export default function HomePageClient({
               <p className="filter-eyebrow">premium filters</p>
               <h3>Shape the public feed</h3>
               <p className="filter-copy">
-                Refine the public feed by mood or reading length. Private confessions stay hidden
+                Start with the recommendation engine, then refine the public feed by mood or reading length. Private confessions stay hidden
                 even when premium filters are enabled.
               </p>
             </div>

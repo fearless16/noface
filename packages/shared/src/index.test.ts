@@ -16,6 +16,7 @@ import {
   getFeedFilterLabel,
   isPremiumFeedFilter,
   normalizeMood,
+  rankRecommendedConfessions,
   sortConfessionsDescending,
   toRow,
   validateConfession
@@ -198,7 +199,7 @@ describe("feed filters", () => {
   ];
 
   it("creates the default feed filter state", () => {
-    expect(createDefaultFeedFilters()).toEqual({ filter: "all", mood: "all" });
+    expect(createDefaultFeedFilters()).toEqual({ filter: "recommended", mood: "all" });
   });
 
   it("returns all confessions for the all filter", () => {
@@ -241,13 +242,41 @@ describe("feed filters", () => {
   });
 
   it("identifies premium filters and labels them", () => {
+    expect(isPremiumFeedFilter("recommended")).toBe(true);
     expect(isPremiumFeedFilter("mood")).toBe(true);
     expect(isPremiumFeedFilter("short")).toBe(true);
     expect(isPremiumFeedFilter("long")).toBe(true);
     expect(isPremiumFeedFilter("all")).toBe(false);
+    expect(getFeedFilterLabel("recommended")).toBe("Recommended");
     expect(getFeedFilterLabel("short")).toBe("Short reads");
     expect(getFeedFilterLabel("long")).toBe("Long reads");
     expect(getFeedFilterLabel("all")).toBe("All confessions");
+  });
+
+  it("ranks recommended confessions by mood affinity and avoids the viewer's own posts", () => {
+    const publicFeed = [
+      makeConfession({ id: "short", userId: "anon-2", text: "Short confession.", mood: "sad" }),
+      makeConfession({ id: "long", userId: "anon-3", text: "l".repeat(240), mood: "hopeful" }),
+      makeConfession({ id: "medium", userId: "anon-4", text: "m".repeat(180), mood: "anxious" })
+    ];
+    const recommended = rankRecommendedConfessions(publicFeed, {
+      viewerUserId: "anon-1",
+      myConfessions: [
+        makeConfession({ id: "mine-1", userId: "anon-1", mood: "hopeful", text: "h".repeat(220) }),
+        makeConfession({ id: "mine-2", userId: "anon-1", mood: "hopeful", text: "h".repeat(200) })
+      ]
+    });
+
+    expect(recommended[0]?.id).toBe("long");
+    expect(recommended.at(-1)?.userId).not.toBe("anon-1");
+  });
+
+  it("uses recommended ranking when the recommended filter is selected", () => {
+    const result = applyFeedFilters(confessions, { filter: "recommended", mood: "all" }, {
+      myConfessions: [makeConfession({ id: "mine-1", mood: "sad" })]
+    });
+
+    expect(result[0]?.mood).toBe("sad");
   });
 });
 

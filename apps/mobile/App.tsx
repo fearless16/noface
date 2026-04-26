@@ -55,7 +55,7 @@ import {
 type ViewMode = "activity" | "feed" | "write" | "mine";
 
 const PAGE_SIZE = 8;
-const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
+const FEED_FILTER_OPTIONS: FeedFilter[] = ["recommended", "all", "mood", "short", "long"];
 
 export default function App() {
   const [fontsLoaded] = useFonts({
@@ -89,7 +89,7 @@ export function AppContent() {
   const [selectedMood, setSelectedMood] = useState<Mood | "">("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [feedFilters, setFeedFilters] = useState<FeedFilters>(() => createDefaultFeedFilters());
-  const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(false);
+  const [isPremiumPreviewEnabled, setIsPremiumPreviewEnabled] = useState(true);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [feedOffset, setFeedOffset] = useState(0);
   const [hasMoreFeed, setHasMoreFeed] = useState(true);
@@ -101,7 +101,12 @@ export function AppContent() {
   const shareCardRef = useRef<View>(null);
 
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
-  const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
+  const filteredFeed = useMemo(() => {
+    return applyFeedFilters(feed, feedFilters, {
+      viewerUserId: userId,
+      myConfessions: mine
+    });
+  }, [feed, feedFilters, mine, userId]);
   const identity = useMemo(() => {
     if (!userId) {
       return null;
@@ -351,12 +356,19 @@ export function AppContent() {
       const next = !current;
 
       if (!next) {
-        setFeedFilters(createDefaultFeedFilters());
+        setFeedFilters({ filter: "all", mood: "all" });
       }
 
       return next;
     });
     setVisibleCount(PAGE_SIZE);
+  }
+
+  function openRecommendedFeed() {
+    setIsPremiumPreviewEnabled(true);
+    setFeedFilters(createDefaultFeedFilters());
+    setVisibleCount(PAGE_SIZE);
+    setViewMode("feed");
   }
 
   function renderCard({ item }: { item: Confession }) {
@@ -444,7 +456,7 @@ export function AppContent() {
                 <Text selectable style={styles.secretIdValue}>{identity ? formatSecretId(identity.secretId) : "···"}</Text>
               </View>
               <View style={styles.activityActionRow}>
-                <Pressable onPress={() => setViewMode("feed")} style={styles.primaryButton}>
+                <Pressable onPress={openRecommendedFeed} style={styles.primaryButton}>
                   <Text style={styles.primaryButtonText}>Enter feed</Text>
                 </Pressable>
                 <Pressable onPress={() => setViewMode("write")} style={styles.secondaryButton}>
@@ -457,7 +469,7 @@ export function AppContent() {
               <Text style={styles.filterEyebrow}>network pulse</Text>
               <Text style={styles.activityTitle}>{dominantMood ? `${MOOD_EMOJI[dominantMood]} ${dominantMood}` : "No signal yet"}</Text>
               <Text style={styles.activityCopy}>
-                Recommendations are still chronological today. This branch establishes the premium entry and identity layer first.
+                The feed now prioritizes confessions that match your writing pattern, dominant mood, and the freshest public traffic.
               </Text>
               <View style={styles.activityStatsRow}>
                 <View style={styles.activityStatCard}>
@@ -507,7 +519,7 @@ export function AppContent() {
               <Text style={styles.filterEyebrow}>premium filters</Text>
               <Text style={styles.filterTitle}>Shape the public feed</Text>
               <Text style={styles.filterCopy}>
-                Refine by mood or reading length. Private confessions remain excluded.
+                Start with the recommendation engine, then refine by mood or reading length. Private confessions remain excluded.
               </Text>
               <Pressable onPress={handlePremiumPreviewToggle} style={styles.secondaryButton}>
                 <Text style={styles.secondaryButtonText}>

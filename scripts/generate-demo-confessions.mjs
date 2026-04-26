@@ -8,7 +8,8 @@ const workspaceRoot = path.resolve(__dirname, "..");
 const outputPath = path.join(workspaceRoot, "packages/shared/src/demo-confessions.generated.ts");
 
 const FEED_SIZE = 1000;
-const SEED_VERSION = `demo-feed-v1-${FEED_SIZE}`;
+const SEED_VERSION = `demo-feed-v2-${FEED_SIZE}`;
+const MAX_TEXT_LENGTH = 480;
 const baseTimestamp = Date.parse("2026-04-26T23:59:00.000Z");
 
 const moods = ["sad", "angry", "regret", "happy", "anxious", "hopeful", null];
@@ -63,19 +64,46 @@ function pickLead(index, targetLength) {
   return longLeads[index % longLeads.length];
 }
 
+function pickFittingCloser(text, startIndex, maxLength) {
+  for (let offset = 0; offset < closers.length; offset += 1) {
+    const closer = closers[(startIndex + offset) % closers.length];
+
+    if (`${text} ${closer}`.length <= maxLength) {
+      return closer;
+    }
+  }
+
+  return null;
+}
+
 function buildText(index) {
   const band = index % 3;
   const targetLength = band === 0 ? 95 + (index % 30) : band === 1 ? 150 + (index % 45) : 250 + (index % 150);
   let text = pickLead(index, targetLength);
+  const maxLength = Math.min(Math.max(targetLength, text.length), MAX_TEXT_LENGTH);
   let detailIndex = index;
+  const closerIndex = index % closers.length;
 
-  while (text.length < targetLength - 30) {
-    text += ` ${details[detailIndex % details.length]}`;
+  while (detailIndex < index + details.length) {
+    const nextDetail = details[detailIndex % details.length];
+    const nextText = `${text} ${nextDetail}`;
+    const closer = pickFittingCloser(nextText, closerIndex, maxLength);
+
+    if (nextText.length > maxLength || !closer) {
+      break;
+    }
+
+    text = nextText;
     detailIndex += 1;
   }
 
-  text += ` ${closers[index % closers.length]}`;
-  return text.slice(0, Math.min(targetLength, 480)).trim();
+  const closer = pickFittingCloser(text, closerIndex, maxLength);
+
+  if (closer) {
+    return `${text} ${closer}`;
+  }
+
+  return text;
 }
 
 function buildConfession(index) {

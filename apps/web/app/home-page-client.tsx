@@ -42,6 +42,7 @@ type HomePageClientProps = {
 };
 
 const PAGE_SIZE = 8;
+const CONFESSION_EXPAND_THRESHOLD = 220;
 const FEED_FILTER_OPTIONS: FeedFilter[] = ["recommended", "all", "mood", "short", "long"];
 
 export default function HomePageClient({
@@ -588,7 +589,7 @@ export default function HomePageClient({
                     </span>
                   ) : null}
                 </div>
-                <p>{confession.text}</p>
+                <ExpandableConfessionText confession={confession} />
                 <div className="card-actions">
                   <button className="ghost small" onClick={() => void handleShare(confession)} type="button">
                     Share
@@ -708,7 +709,7 @@ export default function HomePageClient({
                     ) : null}
                   </div>
                 </div>
-                <p>{confession.text}</p>
+                <ExpandableConfessionText confession={confession} />
                 <div className="card-actions">
                   <button className="ghost small" onClick={() => void handleShare(confession)} type="button">
                     Share
@@ -730,5 +731,26 @@ export default function HomePageClient({
         </section>
       ) : null}
     </main>
+  );
+}
+
+function ExpandableConfessionText({ confession }: { confession: Confession }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const canExpand = confession.text.trim().length > CONFESSION_EXPAND_THRESHOLD;
+
+  return (
+    <div className="confession-copy">
+      <p className={`confession-body${canExpand && !isExpanded ? " is-collapsed" : ""}`}>{confession.text}</p>
+      {canExpand ? (
+        <button
+          aria-expanded={isExpanded}
+          className="expand-toggle"
+          onClick={() => setIsExpanded((current) => !current)}
+          type="button"
+        >
+          {isExpanded ? "Show less" : "Show more"}
+        </button>
+      ) : null}
+    </div>
   );
 }

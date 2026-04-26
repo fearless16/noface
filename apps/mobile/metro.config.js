@@ -6,16 +6,12 @@ const monorepoRoot = path.resolve(projectRoot, "../..");
 
 const config = getDefaultConfig(projectRoot);
 
-// Watch the monorepo root so Metro can resolve workspace packages
-config.watchFolders = [monorepoRoot];
+// Keep Expo's defaults intact and only append the monorepo root for workspace package watching.
+config.watchFolders = Array.from(new Set([...(config.watchFolders ?? []), monorepoRoot]));
 
-// Resolve modules from the mobile app first, then from the monorepo root
-config.resolver.nodeModulesPaths = [
-  path.resolve(projectRoot, "node_modules"),
-  path.resolve(monorepoRoot, "node_modules")
-];
-
-// Ensure the project root is anchored to apps/mobile, not the repo root
-config.projectRoot = projectRoot;
+// Prefer the app-local node_modules path so native/runtime packages stay aligned with Expo SDK 55.
+config.resolver.nodeModulesPaths = Array.from(
+  new Set([path.resolve(projectRoot, "node_modules"), ...(config.resolver.nodeModulesPaths ?? [])])
+);
 
 module.exports = config;

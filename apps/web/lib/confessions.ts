@@ -13,9 +13,15 @@ import {
 import { createClient } from "../utils/supabase/client";
 
 const supabase = createClient();
+const DEMO_CONFESSION_IDS = new Set(DEMO_CONFESSIONS.map((confession) => confession.id));
 
 function hasBrowserStorage(): boolean {
   return typeof window !== "undefined";
+}
+
+function mergeLatestDemoConfessions(confessions: Confession[]): Confession[] {
+  const preservedConfessions = confessions.filter((confession) => !DEMO_CONFESSION_IDS.has(confession.id));
+  return sortConfessionsDescending([...DEMO_CONFESSIONS, ...preservedConfessions]);
 }
 
 function readLocalConfessions(): Confession[] {
@@ -39,12 +45,7 @@ function readLocalConfessions(): Confession[] {
     return sortConfessionsDescending(parsed);
   }
 
-  const existingIds = new Set(parsed.map((confession) => confession.id));
-  const missingSeedConfessions = DEMO_CONFESSIONS.filter((confession) => !existingIds.has(confession.id));
-  const mergedConfessions = sortConfessionsDescending([
-    ...parsed,
-    ...missingSeedConfessions
-  ]);
+  const mergedConfessions = mergeLatestDemoConfessions(parsed);
 
   window.localStorage.setItem(STORAGE_KEYS.confessions, JSON.stringify(mergedConfessions));
   window.localStorage.setItem(STORAGE_KEYS.demoSeeded, "true");

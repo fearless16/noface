@@ -367,7 +367,7 @@ describe("MOOD_EMOJI", () => {
 describe("DEMO_CONFESSIONS", () => {
   it("seeds the full 1000-item dev feed", () => {
     expect(DEMO_CONFESSIONS).toHaveLength(1000);
-    expect(DEMO_CONFESSION_SEED_VERSION).toBe("demo-feed-v1-1000");
+    expect(DEMO_CONFESSION_SEED_VERSION).toBe("demo-feed-v2-1000");
   });
 
   it("keeps all demo confessions public so the feed preview is populated", () => {
@@ -394,5 +394,11 @@ describe("DEMO_CONFESSIONS", () => {
     expect(shortCount).toBeGreaterThan(0);
     expect(mediumCount).toBeGreaterThan(0);
     expect(longCount).toBeGreaterThan(0);
+  });
+
+  it("keeps generated confession text complete instead of cutting entries mid-word", () => {
+    expect(
+      DEMO_CONFESSIONS.every((confession) => /[.!?]$/.test(confession.text))
+    ).toBe(true);
   });
 });

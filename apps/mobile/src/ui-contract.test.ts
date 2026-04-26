@@ -10,6 +10,7 @@ import {
 } from "./ui-contract";
 
 const appSource = readFileSync(path.resolve(__dirname, "../App.tsx"), "utf8");
+const metroConfigSource = readFileSync(path.resolve(__dirname, "../metro.config.js"), "utf8");
 
 describe("mobile scroll contract", () => {
   it("keeps feed and mine lists visibly scrollable", () => {
@@ -93,5 +94,34 @@ describe("App.tsx wiring", () => {
     expect(appSource).toContain("getConfessionModerationMessage");
     expect(appSource).toContain("Links, handle drops, and promo phrases are filtered before publish.");
     expect(appSource).toContain("disabled={isSubmitting || Boolean(composerModerationMessage)}");
+  });
+
+  it("wires long confessions to the expandable mobile reader", () => {
+    expect(appSource).toContain("const CONFESSION_EXPAND_THRESHOLD = 220");
+    expect(appSource).toContain("const CONFESSION_PREVIEW_LINES = 5");
+    expect(appSource).toContain("<ExpandableConfessionText text={item.text} />");
+    expect(appSource).toContain(
+      "numberOfLines={canExpand && !isExpanded ? CONFESSION_PREVIEW_LINES : undefined}"
+    );
+    expect(appSource).toContain('{isExpanded ? "Show less" : "Show more"}');
+  });
+
+  it("adds wrap and overflow protection to dense mobile layouts", () => {
+    expect(appSource).toContain('minWidth: 0');
+    expect(appSource).toContain('flexWrap: "wrap"');
+    expect(appSource).toContain('flexBasis: "48%"');
+    expect(appSource).toContain('maxWidth: "100%"');
+    expect(appSource).toContain('maxWidth: 220');
+  });
+});
+
+describe("metro config", () => {
+  it("preserves Expo defaults while watching the monorepo root", () => {
+    expect(metroConfigSource).toContain("...(config.watchFolders ?? [])");
+    expect(metroConfigSource).toContain("...(config.resolver.nodeModulesPaths ?? [])");
+  });
+
+  it("avoids forcing Metro to resolve packages from the monorepo root node_modules", () => {
+    expect(metroConfigSource).not.toContain('path.resolve(monorepoRoot, "node_modules")');
   });
 });

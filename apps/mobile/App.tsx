@@ -56,6 +56,8 @@ import {
 type ViewMode = "activity" | "feed" | "write" | "mine";
 
 const PAGE_SIZE = 8;
+const CONFESSION_EXPAND_THRESHOLD = 220;
+const CONFESSION_PREVIEW_LINES = 5;
 const FEED_FILTER_OPTIONS: FeedFilter[] = ["recommended", "all", "mood", "short", "long"];
 
 export default function App() {
@@ -383,7 +385,7 @@ export function AppContent() {
             {item.mood ? <Text style={styles.pill}>{MOOD_EMOJI[item.mood]} {item.mood}</Text> : null}
           </View>
         </View>
-        <Text style={styles.cardText}>{item.text}</Text>
+        <ExpandableConfessionText text={item.text} />
         <Pressable onPress={() => void handleShareConfession(item)} style={styles.shareButton}>
           <Text style={styles.shareButtonText}>Share card</Text>
         </Pressable>
@@ -756,7 +758,7 @@ export function AppContent() {
                       {item.mood ? <Text style={styles.pill}>{MOOD_EMOJI[item.mood]} {item.mood}</Text> : null}
                     </View>
                   </View>
-                  <Text style={styles.cardText}>{item.text}</Text>
+                  <ExpandableConfessionText text={item.text} />
                   <View style={styles.cardActionRow}>
                     <Pressable onPress={() => void handleShareConfession(item)} style={styles.shareButton}>
                       <Text style={styles.shareButtonText}>Share card</Text>
@@ -805,6 +807,27 @@ function waitForNextFrame(): Promise<void> {
   });
 }
 
+function ExpandableConfessionText({ text }: { text: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const canExpand = text.trim().length > CONFESSION_EXPAND_THRESHOLD;
+
+  return (
+    <View style={styles.expandableTextBlock}>
+      <Text
+        numberOfLines={canExpand && !isExpanded ? CONFESSION_PREVIEW_LINES : undefined}
+        style={styles.cardText}
+      >
+        {text}
+      </Text>
+      {canExpand ? (
+        <Pressable onPress={() => setIsExpanded((current) => !current)} style={styles.expandToggle}>
+          <Text style={styles.expandToggleText}>{isExpanded ? "Show less" : "Show more"}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 export const styles = StyleSheet.create({
   flex1: {
     flex: 1
@@ -817,7 +840,8 @@ export const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: "#000000"
+    backgroundColor: "#000000",
+    minWidth: 0
   },
   hero: {
     padding: 20,
@@ -857,11 +881,14 @@ export const styles = StyleSheet.create({
   },
   metricsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginTop: 16
   },
   metricCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "31%",
+    minWidth: 140,
     padding: 10,
     borderRadius: 3,
     backgroundColor: "#0b0b0b",
@@ -891,11 +918,14 @@ export const styles = StyleSheet.create({
   },
   tabs: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
     marginVertical: 14
   },
   tab: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "48%",
+    minWidth: 132,
     minHeight: MOBILE_TOUCH_TARGETS.tabMinHeight,
     alignItems: "center",
     justifyContent: "center",
@@ -930,6 +960,7 @@ export const styles = StyleSheet.create({
     letterSpacing: 1
   },
   listContent: {
+    flexGrow: 1,
     paddingBottom: 32,
     gap: 8
   },
@@ -941,6 +972,7 @@ export const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 10,
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
     alignItems: "flex-start"
   },
@@ -996,10 +1028,13 @@ export const styles = StyleSheet.create({
   },
   activityStatsRow: {
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8
   },
   activityStatCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: "48%",
+    minWidth: 140,
     padding: 12,
     borderRadius: 3,
     borderWidth: 1,
@@ -1031,8 +1066,9 @@ export const styles = StyleSheet.create({
   },
   cardMeta: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 10,
     gap: 8
   },
@@ -1040,14 +1076,16 @@ export const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
     flexWrap: "wrap",
-    justifyContent: "flex-end"
+    justifyContent: "flex-start",
+    maxWidth: "100%"
   },
   metaText: {
     color: "#4a4a6a",
     fontSize: 10,
     fontFamily: "SpaceMono_400Regular",
     textTransform: "uppercase",
-    letterSpacing: 0.8
+    letterSpacing: 0.8,
+    flexShrink: 1
   },
   pill: {
     color: "#9d4edd",
@@ -1058,7 +1096,8 @@ export const styles = StyleSheet.create({
     overflow: "hidden",
     fontSize: 10,
     fontFamily: "SpaceMono_400Regular",
-    textTransform: "uppercase"
+    textTransform: "uppercase",
+    maxWidth: "100%"
   },
   privatePill: {
     color: "#ff3366",
@@ -1069,13 +1108,26 @@ export const styles = StyleSheet.create({
     overflow: "hidden",
     fontSize: 10,
     fontFamily: "SpaceMono_400Regular",
-    textTransform: "lowercase"
+    textTransform: "lowercase",
+    maxWidth: "100%"
   },
   cardText: {
     color: "#e0e0f0",
     fontFamily: "Inter_400Regular",
     fontSize: 15,
     lineHeight: 26
+  },
+  expandableTextBlock: {
+    gap: 8
+  },
+  expandToggle: {
+    alignSelf: "flex-start"
+  },
+  expandToggleText: {
+    color: "#9d4edd",
+    fontFamily: "SpaceMono_400Regular",
+    fontSize: 11,
+    textTransform: "uppercase"
   },
   emptyState: {
     padding: 20,
@@ -1148,7 +1200,8 @@ export const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "#0b0b0b",
     borderWidth: 1,
-    borderColor: "rgba(157,78,221,0.18)"
+    borderColor: "rgba(157,78,221,0.18)",
+    maxWidth: 220
   },
   activeFilterChip: {
     backgroundColor: "#9d4edd",

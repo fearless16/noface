@@ -26,6 +26,13 @@ const supabase =
       })
     : null;
 
+const DEMO_CONFESSION_IDS = new Set(DEMO_CONFESSIONS.map((confession) => confession.id));
+
+function mergeLatestDemoConfessions(confessions: Confession[]): Confession[] {
+  const preservedConfessions = confessions.filter((confession) => !DEMO_CONFESSION_IDS.has(confession.id));
+  return sortConfessionsDescending([...DEMO_CONFESSIONS, ...preservedConfessions]);
+}
+
 async function readLocalConfessions(): Promise<Confession[]> {
   const [raw, _seeded, seedVersion] = await AsyncStorage.multiGet([
     STORAGE_KEYS.confessions,
@@ -52,13 +59,7 @@ async function readLocalConfessions(): Promise<Confession[]> {
     return sortConfessionsDescending(parsedConfessions);
   }
 
-  const existingIds = new Set(parsedConfessions.map((confession) => confession.id));
-  const missingSeedConfessions = DEMO_CONFESSIONS.filter((confession) => !existingIds.has(confession.id));
-
-  const mergedConfessions = sortConfessionsDescending([
-    ...parsedConfessions,
-    ...missingSeedConfessions
-  ]);
+  const mergedConfessions = mergeLatestDemoConfessions(parsedConfessions);
 
   await AsyncStorage.multiSet([
     [STORAGE_KEYS.confessions, JSON.stringify(mergedConfessions)],

@@ -7,10 +7,13 @@ import {
   buildConfessionShareFileName,
   buildConfessionShareText,
   type Confession,
+  createAnonymousUsername,
   createDefaultFeedFilters,
+  createSecretIdentity,
   FEED_PAGE_FETCH_SIZE,
   type FeedFilter,
   type FeedFilters,
+  formatSecretId,
   formatConfessionDate,
   getFeedFilterLabel,
   isPremiumFeedFilter,
@@ -30,7 +33,7 @@ import {
 } from "../lib/confessions";
 
 
-type View = "feed" | "write" | "mine";
+type View = "activity" | "feed" | "write" | "mine";
 
 type HomePageClientProps = {
   initialFeed: Confession[];
@@ -43,7 +46,7 @@ const FEED_FILTER_OPTIONS: FeedFilter[] = ["all", "mood", "short", "long"];
 export default function HomePageClient({
   initialFeed,
 }: HomePageClientProps) {
-  const [currentView, setCurrentView] = useState<View>("feed");
+  const [currentView, setCurrentView] = useState<View>("activity");
   const [userId, setUserId] = useState<string>("");
   const [feed, setFeed] = useState<Confession[]>(initialFeed);
   const [mine, setMine] = useState<Confession[]>([]);
@@ -66,6 +69,36 @@ export default function HomePageClient({
   const canDelete = useMemo(() => canDeleteMyConfessions(), []);
   const filteredFeed = useMemo(() => applyFeedFilters(feed, feedFilters), [feed, feedFilters]);
   const visibleFeed = filteredFeed.slice(0, visibleCount);
+  const identity = useMemo(() => {
+    if (!userId) {
+      return null;
+    }
+
+    return createSecretIdentity(userId);
+  }, [userId]);
+  const dominantMood = useMemo(() => {
+    const moodCounts = new Map<Mood, number>();
+
+    for (const confession of feed) {
+      if (!confession.mood) {
+        continue;
+      }
+
+      moodCounts.set(confession.mood, (moodCounts.get(confession.mood) ?? 0) + 1);
+    }
+
+    let currentMood: Mood | null = null;
+    let currentCount = -1;
+
+    for (const [mood, count] of moodCounts) {
+      if (count > currentCount) {
+        currentMood = mood;
+        currentCount = count;
+      }
+    }
+
+    return currentMood;
+  }, [feed]);
 
   async function loadNextFeedPage() {
     if (isLoadingFeedPage || !hasMoreFeed) {
@@ -345,24 +378,23 @@ export default function HomePageClient({
     <main className="shell">
       <section className="hero">
         <div>
-          <p className="eyebrow">anonymous daily confession app</p>
-          <h1>Say it without <em>becoming</em> it.</h1>
+          <p className="eyebrow">entry node // noface</p>
+          <h1>Enter the <em>quiet side</em> of the network.</h1>
         </div>
         <p>
-          // generate a ghost id. write one honest note. read what strangers carry.
-          // no profiles. no replies. no social score. just words in the dark.
+          // total blackout. auto-issued alias. one secret id. a public feed of things people only say in the dark.
         </p>
         <div className="hero-grid">
           <article className="metric">
-            <span>// confessions</span>
+            <span>// public signal</span>
             <strong>{hasMoreFeed ? `${filteredFeed.length}+` : filteredFeed.length}</strong>
           </article>
           <article className="metric">
-            <span>// mine</span>
-            <strong>{mine.length}</strong>
+            <span>// assigned alias</span>
+            <strong>{identity?.username ?? (userId ? createAnonymousUsername(userId) : "···")}</strong>
           </article>
           <article className="metric">
-            <span>// ghost id</span>
+            <span>// secret id</span>
             <strong>{userId ? `${userId.slice(0, 8)}` : "···"}</strong>
           </article>
         </div>
@@ -371,6 +403,7 @@ export default function HomePageClient({
 
       <nav className="tabs" aria-label="Primary views">
         {[
+          { label: "Activity", value: "activity" },
           { label: "Feed", value: "feed" },
           { label: "Write", value: "write" },
           { label: "My confessions", value: "mine" }
@@ -385,6 +418,73 @@ export default function HomePageClient({
           </button>
         ))}
       </nav>
+
+      {currentView === "activity" ? (
+        <section className="panel activity-panel">
+          <div className="panel-header">
+            <div>
+              <h2>// activity</h2>
+              <p>your access card, live network pulse, and the fastest way into the feed.</p>
+            </div>
+            <button className="primary" onClick={() => setCurrentView("feed")} type="button">
+              Enter feed
+            </button>
+          </div>
+
+          <div className="activity-grid">
+            <article className="identity-card">
+              <p className="filter-eyebrow">assigned automatically</p>
+              <h3>{identity?.username ?? "booting-alias"}</h3>
+              <p className="identity-copy">
+                This alias is generated from your secret id. It is public-safe. The full id is not.
+              </p>
+              <div className="identity-secret">
+                <span>// secret id</span>
+                <strong>{identity ? formatSecretId(identity.secretId) : "···"}</strong>
+              </div>
+              <div className="identity-actions">
+                <button className="ghost" onClick={() => setCurrentView("write")} type="button">
+                  Write now
+                </button>
+                <button className="ghost" onClick={() => setCurrentView("mine")} type="button">
+                  Open archive
+                </button>
+              </div>
+            </article>
+
+            <article className="activity-card">
+              <p className="filter-eyebrow">network pulse</p>
+              <h3>{dominantMood ? `${MOOD_EMOJI[dominantMood]} ${dominantMood}` : "No signal yet"}</h3>
+              <p className="identity-copy">
+                Recommendations are still chronological today. This branch sets the premium entry and identity foundations first.
+              </p>
+              <div className="activity-stats">
+                <div>
+                  <span>// public feed</span>
+                  <strong>{filteredFeed.length}</strong>
+                </div>
+                <div>
+                  <span>// private archive</span>
+                  <strong>{mine.filter((confession) => confession.isPrivate).length}</strong>
+                </div>
+              </div>
+            </article>
+
+            <article className="activity-card recent-activity">
+              <p className="filter-eyebrow">recent traffic</p>
+              <h3>Latest from the dark</h3>
+              <div className="activity-list">
+                {feed.slice(0, 3).map((confession) => (
+                  <div className="activity-row" key={confession.id}>
+                    <span>{confession.mood ? `${MOOD_EMOJI[confession.mood]} ${confession.mood}` : "raw"}</span>
+                    <p>{confession.text}</p>
+                  </div>
+                ))}
+              </div>
+            </article>
+          </div>
+        </section>
+      ) : null}
 
       {currentView === "feed" ? (
         <section className="panel">

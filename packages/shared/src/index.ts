@@ -38,6 +38,11 @@ export type ConfessionDraft = {
   isPrivate: boolean;
 };
 
+export type SecretIdentity = {
+  secretId: string;
+  username: string;
+};
+
 export const PREMIUM_FEED_FILTERS = [
   "mood",
   "short",
@@ -72,9 +77,70 @@ type ShareCardPalette = {
 
 export const STORAGE_KEYS = {
   userId: "noface.user-id",
+  username: "noface.username",
   confessions: "noface.confessions",
   demoSeeded: "noface.demo-seeded"
 } as const;
+
+const USERNAME_PREFIXES = [
+  "void",
+  "cipher",
+  "static",
+  "shadow",
+  "black",
+  "zero",
+  "silent",
+  "night",
+  "phantom",
+  "signal",
+  "chrome",
+  "neon"
+] as const;
+
+const USERNAME_SUFFIXES = [
+  "thread",
+  "ghost",
+  "relay",
+  "switch",
+  "archive",
+  "mirror",
+  "vector",
+  "circuit",
+  "mask",
+  "trace",
+  "packet",
+  "operator"
+] as const;
+
+function hashString(value: string): number {
+  let hash = 0;
+
+  for (const character of value) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+
+  return hash;
+}
+
+export function createAnonymousUsername(secretId: string): string {
+  const hash = hashString(secretId);
+  const prefix = USERNAME_PREFIXES[hash % USERNAME_PREFIXES.length];
+  const suffix = USERNAME_SUFFIXES[Math.floor(hash / USERNAME_PREFIXES.length) % USERNAME_SUFFIXES.length];
+  const discriminator = String(hash % 1000).padStart(3, "0");
+
+  return `${prefix}-${suffix}-${discriminator}`;
+}
+
+export function createSecretIdentity(secretId: string): SecretIdentity {
+  return {
+    secretId,
+    username: createAnonymousUsername(secretId)
+  };
+}
+
+export function formatSecretId(secretId: string): string {
+  return secretId.replace(/-/g, " ").toUpperCase();
+}
 
 export function createAnonymousUserId(): string {
   const cryptoObject = globalThis as typeof globalThis & {

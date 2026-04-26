@@ -44,6 +44,7 @@ export type SecretIdentity = {
 };
 
 export const PREMIUM_FEED_FILTERS = [
+  "recommended",
   "mood",
   "short",
   "long"
@@ -56,6 +57,11 @@ export type FeedFilter = "all" | PremiumFeedFilter;
 export type FeedFilters = {
   filter: FeedFilter;
   mood: Mood | "all";
+};
+
+export type FeedRecommendationContext = {
+  viewerUserId?: string;
+  myConfessions?: Confession[];
 };
 
 export type ConfessionRow = {
@@ -199,7 +205,7 @@ export function formatConfessionDate(createdAt: string): string {
 
 export function createDefaultFeedFilters(): FeedFilters {
   return {
-    filter: "all",
+    filter: "recommended",
     mood: "all"
   };
 }
@@ -208,8 +214,102 @@ export function isPremiumFeedFilter(filter: FeedFilter): filter is PremiumFeedFi
   return PREMIUM_FEED_FILTERS.includes(filter as PremiumFeedFilter);
 }
 
-export function applyFeedFilters(confessions: Confession[], filters: FeedFilters): Confession[] {
+export function rankRecommendedConfessions(
+  confessions: Confession[],
+  context: FeedRecommendationContext = {}
+): Confession[] {
+  const candidateConfessions = context.viewerUserId
+    ? confessions.filter((confession) => confession.userId !== context.viewerUserId)
+    : confessions;
+  const myConfessions = context.myConfessions ?? [];
+  const viewerUserId = context.viewerUserId;
+  const moodAffinity = new Map<Mood, number>();
+
+  for (const confession of myConfessions) {
+    if (!confession.mood) {
+      continue;
+    }
+
+    moodAffinity.set(confession.mood, (moodAffinity.get(confession.mood) ?? 0) + 1);
+  }
+
+  const lengthPreference = myConfessions.length
+    ? myConfessions.reduce((sum, confession) => sum + confession.text.trim().length, 0) / myConfessions.length
+    : null;
+  const newestTimestamp = candidateConfessions.reduce((current, confession) => {
+    return Math.max(current, new Date(confession.createdAt).getTime());
+  }, 0);
+  const oldestTimestamp = candidateConfessions.reduce((current, confession) => {
+    const timestamp = new Date(confession.createdAt).getTime();
+    return current === 0 ? timestamp : Math.min(current, timestamp);
+  }, 0);
+  const range = Math.max(1, newestTimestamp - oldestTimestamp);
+
+  return [...candidateConfessions].sort((left, right) => {
+    const leftScore = scoreRecommendedConfession(left, {
+      lengthPreference,
+      moodAffinity,
+      oldestTimestamp,
+      range,
+      viewerUserId
+    });
+    const rightScore = scoreRecommendedConfession(right, {
+      lengthPreference,
+      moodAffinity,
+      oldestTimestamp,
+      range,
+      viewerUserId
+    });
+
+    if (rightScore !== leftScore) {
+      return rightScore - leftScore;
+    }
+
+    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+  });
+}
+
+type RecommendationScoreContext = {
+  lengthPreference: number | null;
+  moodAffinity: Map<Mood, number>;
+  oldestTimestamp: number;
+  range: number;
+  viewerUserId?: string;
+};
+
+function scoreRecommendedConfession(
+  confession: Confession,
+  context: RecommendationScoreContext
+): number {
+  let score = 0;
+
+  if (context.viewerUserId && confession.userId === context.viewerUserId) {
+    score -= 120;
+  }
+
+  if (confession.mood) {
+    score += (context.moodAffinity.get(confession.mood) ?? 0) * 25;
+  }
+
+  if (context.lengthPreference !== null) {
+    const distance = Math.abs(confession.text.trim().length - context.lengthPreference);
+    score += Math.max(0, 18 - distance / 12);
+  }
+
+  const freshness = (new Date(confession.createdAt).getTime() - context.oldestTimestamp) / context.range;
+  score += freshness * 30;
+
+  return score;
+}
+
+export function applyFeedFilters(
+  confessions: Confession[],
+  filters: FeedFilters,
+  context: FeedRecommendationContext = {}
+): Confession[] {
   switch (filters.filter) {
+    case "recommended":
+      return rankRecommendedConfessions(confessions, context);
     case "mood":
       if (filters.mood === "all") {
         return confessions;
@@ -228,6 +328,8 @@ export function applyFeedFilters(confessions: Confession[], filters: FeedFilters
 
 export function getFeedFilterLabel(filter: FeedFilter): string {
   switch (filter) {
+    case "recommended":
+      return "Recommended";
     case "mood":
       return "Mood match";
     case "short":

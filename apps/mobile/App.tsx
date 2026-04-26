@@ -460,11 +460,21 @@ export function AppContent() {
                 <Text selectable style={styles.secretIdValue}>{identity ? formatSecretId(identity.secretId) : "···"}</Text>
               </View>
               <View style={styles.activityActionRow}>
-                <Pressable onPress={openRecommendedFeed} style={styles.primaryButton}>
-                  <Text style={styles.primaryButtonText}>Enter feed</Text>
+                <Pressable
+                  onPress={openRecommendedFeed}
+                  style={[styles.primaryButton, styles.activityActionButton, styles.activityPrimaryButton]}
+                >
+                  <Text numberOfLines={1} style={[styles.primaryButtonText, styles.activityActionButtonText]}>
+                    Enter feed
+                  </Text>
                 </Pressable>
-                <Pressable onPress={() => setViewMode("write")} style={styles.secondaryButton}>
-                  <Text style={styles.secondaryButtonText}>Write now</Text>
+                <Pressable
+                  onPress={() => setViewMode("write")}
+                  style={[styles.secondaryButton, styles.activityActionButton, styles.activitySecondaryButton]}
+                >
+                  <Text numberOfLines={1} style={[styles.secondaryButtonText, styles.activityActionButtonText]}>
+                    Write now
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -1024,7 +1034,35 @@ export const styles = StyleSheet.create({
   activityActionRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10
+    gap: 10,
+    marginTop: 4,
+    alignItems: "stretch"
+  },
+  activityActionButton: {
+    flexGrow: 1,
+    flexBasis: "48%",
+    minWidth: 0,
+    minHeight: MOBILE_TOUCH_TARGETS.actionButtonMinHeight + 6,
+    marginTop: 0,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignSelf: "stretch"
+  },
+  activityActionButtonText: {
+    textAlign: "center",
+    textTransform: "uppercase",
+    letterSpacing: 0.8
+  },
+  activityPrimaryButton: {
+    shadowColor: "#9d4edd",
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3
+  },
+  activitySecondaryButton: {
+    backgroundColor: "#090912",
+    borderColor: "rgba(157,78,221,0.26)"
   },
   activityStatsRow: {
     flexDirection: "row",

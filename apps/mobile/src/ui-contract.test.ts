@@ -113,6 +113,15 @@ describe("App.tsx wiring", () => {
     expect(appSource).toContain('maxWidth: "100%"');
     expect(appSource).toContain('maxWidth: 220');
   });
+
+  it("keeps the activity CTA buttons aligned with single-line labels", () => {
+    expect(appSource).toContain("styles.activityActionButton");
+    expect(appSource).toContain("styles.activityPrimaryButton");
+    expect(appSource).toContain("styles.activitySecondaryButton");
+    expect(appSource).toContain("numberOfLines={1}");
+    expect(appSource).toContain('textAlign: "center"');
+    expect(appSource).toContain('marginTop: 0');
+  });
 });
 
 describe("metro config", () => {

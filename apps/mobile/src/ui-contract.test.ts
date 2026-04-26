@@ -100,9 +100,10 @@ describe("App.tsx wiring", () => {
     expect(appSource).toContain("const CONFESSION_PREVIEW_LINES = 5");
     expect(appSource).toContain("<ExpandableConfessionText text={item.text} />");
     expect(appSource).toContain('ellipsizeMode="tail"');
-    expect(appSource).toContain("onTextLayout={handleTextLayout}");
+    expect(appSource).toContain("onTextLayout={handleMeasureLayout}");
     expect(appSource).toContain("event.nativeEvent.lines.length > CONFESSION_PREVIEW_LINES");
     expect(appSource).toContain("numberOfLines={isExpanded ? undefined : CONFESSION_PREVIEW_LINES}");
+    expect(appSource).toContain("style={styles.cardTextMeasureProbe}");
     expect(appSource).toContain('{isExpanded ? "Show less" : "Show more"}');
   });
 

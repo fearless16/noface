@@ -40,6 +40,7 @@ type HomePageClientProps = {
 };
 
 const PAGE_SIZE = 8;
+const CONFESSION_PREVIEW_LINES = 5;
 const FEED_FILTER_OPTIONS: FeedFilter[] = ["recommended", "all", "mood", "short", "long"];
 
 export default function HomePageClient({
@@ -714,7 +715,7 @@ export default function HomePageClient({
 function ExpandableConfessionText({ confession }: { confession: Confession }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [canExpand, setCanExpand] = useState(false);
-  const bodyRef = useRef<HTMLParagraphElement | null>(null);
+  const measureRef = useRef<HTMLParagraphElement | null>(null);
 
   useEffect(() => {
     setIsExpanded(false);
@@ -722,29 +723,31 @@ function ExpandableConfessionText({ confession }: { confession: Confession }) {
   }, [confession.id, confession.text]);
 
   useEffect(() => {
-    const body = bodyRef.current;
+    const body = measureRef.current;
 
     if (!body) {
       return;
     }
 
-    if (isExpanded) {
-      setCanExpand(true);
-      return;
-    }
-
     const frame = requestAnimationFrame(() => {
-      const nextCanExpand = body.scrollHeight > body.clientHeight + 1;
+      const lineHeight = Number.parseFloat(window.getComputedStyle(body).lineHeight);
+      const maxHeight = Number.isFinite(lineHeight) ? lineHeight * CONFESSION_PREVIEW_LINES : 0;
+      const nextCanExpand = Number.isFinite(lineHeight)
+        ? body.scrollHeight > maxHeight + 1
+        : false;
 
       setCanExpand((current) => (current === nextCanExpand ? current : nextCanExpand));
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [confession.text, isExpanded]);
+  }, [confession.text]);
 
   return (
     <div className="confession-copy">
-      <p className={`confession-body${!isExpanded ? " is-collapsed" : ""}`} ref={bodyRef}>
+      <p className={`confession-body${!isExpanded ? " is-collapsed" : ""}`}>
+        {confession.text}
+      </p>
+      <p aria-hidden className="confession-body confession-measure-probe" ref={measureRef}>
         {confession.text}
       </p>
       {canExpand ? (

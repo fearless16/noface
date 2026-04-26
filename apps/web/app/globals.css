@@ -602,6 +602,7 @@
   .confession-copy {
     display: grid;
     gap: 0.65rem;
+    position: relative;
   }
 
   .confession-body {
@@ -619,6 +620,18 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .confession-measure-probe {
+    position: absolute;
+    inset: 0;
+    visibility: hidden;
+    pointer-events: none;
+    display: block;
+    overflow: visible;
+    text-overflow: clip;
+    -webkit-line-clamp: unset;
+    -webkit-box-orient: initial;
   }
 
   .expand-toggle {

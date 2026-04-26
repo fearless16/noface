@@ -827,7 +827,7 @@ function ExpandableConfessionText({ text }: { text: string }) {
     setCanExpand(false);
   }, [text]);
 
-  const handleTextLayout = useCallback((event: NativeSyntheticEvent<TextLayoutEventData>) => {
+  const handleMeasureLayout = useCallback((event: NativeSyntheticEvent<TextLayoutEventData>) => {
     const nextCanExpand = event.nativeEvent.lines.length > CONFESSION_PREVIEW_LINES;
 
     setCanExpand((current) => (current === nextCanExpand ? current : nextCanExpand));
@@ -838,8 +838,14 @@ function ExpandableConfessionText({ text }: { text: string }) {
       <Text
         ellipsizeMode="tail"
         numberOfLines={isExpanded ? undefined : CONFESSION_PREVIEW_LINES}
-        onTextLayout={handleTextLayout}
         style={styles.cardText}
+      >
+        {text}
+      </Text>
+      <Text
+        accessible={false}
+        onTextLayout={handleMeasureLayout}
+        style={styles.cardTextMeasureProbe}
       >
         {text}
       </Text>
@@ -1170,7 +1176,16 @@ export const styles = StyleSheet.create({
     lineHeight: 26
   },
   expandableTextBlock: {
-    gap: 8
+    gap: 8,
+    position: "relative"
+  },
+  cardTextMeasureProbe: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    opacity: 0,
+    zIndex: -1,
+    pointerEvents: "none"
   },
   expandToggle: {
     alignSelf: "flex-start"

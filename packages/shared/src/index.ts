@@ -64,6 +64,12 @@ export type FeedRecommendationContext = {
   myConfessions?: Confession[];
 };
 
+export type ConfessionModerationSignals = {
+  blockedTerms: string[];
+  containsBlockedLink: boolean;
+  shouldBlock: boolean;
+};
+
 export type ConfessionRow = {
   id: string;
   user_id: string;
@@ -87,6 +93,16 @@ export const STORAGE_KEYS = {
   confessions: "noface.confessions",
   demoSeeded: "noface.demo-seeded"
 } as const;
+
+export const BLOCKED_CONFESSION_TERMS = [
+  "discord.gg",
+  "telegram",
+  "whatsapp",
+  "cashapp",
+  "onlyfans",
+  "crypto giveaway",
+  "buy now"
+] as const;
 
 const USERNAME_PREFIXES = [
   "void",
@@ -175,6 +191,36 @@ export function normalizeMood(value: string | null | undefined): Mood | null {
   return MOODS.includes(value as Mood) ? (value as Mood) : null;
 }
 
+export function normalizeConfessionText(text: string): string {
+  return text.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+export function inspectConfessionModeration(text: string): ConfessionModerationSignals {
+  const normalized = normalizeConfessionText(text);
+  const containsBlockedLink = /(https?:\/\/|www\.)/.test(normalized);
+  const blockedTerms = BLOCKED_CONFESSION_TERMS.filter((term) => normalized.includes(term));
+
+  return {
+    blockedTerms,
+    containsBlockedLink,
+    shouldBlock: containsBlockedLink || blockedTerms.length > 0
+  };
+}
+
+export function getConfessionModerationMessage(text: string): string | null {
+  const moderation = inspectConfessionModeration(text);
+
+  if (moderation.containsBlockedLink) {
+    return "Links and handle drops are blocked. Keep the confession text-only.";
+  }
+
+  if (moderation.blockedTerms.length > 0) {
+    return "Promo and spam phrases are blocked from the confession feed.";
+  }
+
+  return null;
+}
+
 export function validateConfession(text: string): string | null {
   const trimmed = text.trim();
 
@@ -184,6 +230,12 @@ export function validateConfession(text: string): string | null {
 
   if (trimmed.length > MAX_CONFESSION_LENGTH) {
     return `Keep it under ${MAX_CONFESSION_LENGTH} characters.`;
+  }
+
+  const moderationMessage = getConfessionModerationMessage(trimmed);
+
+  if (moderationMessage) {
+    return moderationMessage;
   }
 
   return null;

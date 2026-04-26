@@ -8,14 +8,18 @@ import {
   MOODS,
   applyFeedFilters,
   buildConfessionShareText,
+  BLOCKED_CONFESSION_TERMS,
   createAnonymousUserId,
   createSecretIdentity,
   createDefaultFeedFilters,
   formatSecretId,
   fromRow,
+  getConfessionModerationMessage,
   getFeedFilterLabel,
+  inspectConfessionModeration,
   isPremiumFeedFilter,
   normalizeMood,
+  normalizeConfessionText,
   rankRecommendedConfessions,
   sortConfessionsDescending,
   toRow,
@@ -57,6 +61,36 @@ describe("validateConfession", () => {
   it("trims before length check so whitespace-padded text within limit passes", () => {
     const padded = "  " + "x".repeat(MAX_CONFESSION_LENGTH - 1) + "  ";
     expect(validateConfession(padded)).toBeNull();
+  });
+
+  it("rejects confessions containing links", () => {
+    expect(validateConfession("read this https://example.com right now")).toBe(
+      "Links and handle drops are blocked. Keep the confession text-only."
+    );
+  });
+
+  it("rejects confessions containing blocked promo terms", () => {
+    expect(validateConfession("join my telegram and buy now")).toBe(
+      "Promo and spam phrases are blocked from the confession feed."
+    );
+  });
+});
+
+describe("confession moderation helpers", () => {
+  it("normalizes confession text before moderation checks", () => {
+    expect(normalizeConfessionText("  Join   MY   Telegram  ")).toBe("join my telegram");
+  });
+
+  it("detects blocked links and terms", () => {
+    expect(inspectConfessionModeration("www.example.com telegram onlyfans")).toEqual({
+      blockedTerms: BLOCKED_CONFESSION_TERMS.filter((term) => ["telegram", "onlyfans"].includes(term)),
+      containsBlockedLink: true,
+      shouldBlock: true
+    });
+  });
+
+  it("returns null moderation message for normal confessions", () => {
+    expect(getConfessionModerationMessage("I finally said no and walked away.")).toBeNull();
   });
 });
 

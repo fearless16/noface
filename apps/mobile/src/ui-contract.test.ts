@@ -88,4 +88,10 @@ describe("App.tsx wiring", () => {
     expect(appSource).toContain("minHeight: MOBILE_TOUCH_TARGETS.actionButtonMinHeight");
     expect(appSource).toContain("color: MOBILE_TOUCH_TARGETS.inactiveTextColor");
   });
+
+  it("wires the composer to the shared moderation preflight", () => {
+    expect(appSource).toContain("getConfessionModerationMessage");
+    expect(appSource).toContain("Links, handle drops, and promo phrases are filtered before publish.");
+    expect(appSource).toContain("disabled={isSubmitting || Boolean(composerModerationMessage)}");
+  });
 });

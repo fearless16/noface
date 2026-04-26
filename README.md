@@ -168,7 +168,7 @@ GitHub database check flow:
 ### Mobile
 
 - Deployment workflow: `.github/workflows/deploy-mobile.yml`
-- EAS config: `eas.json`
+- EAS config: `apps/mobile/eas.json`
 - Expo app config: `apps/mobile/app.json`
 - The mobile app now includes a bundle identifier, Android package name, and app scheme for build/distribution setup
 - Before shipping to stores, update `com.noface.mobile` to your final unique identifier if needed
@@ -189,6 +189,7 @@ Common mobile deployment steps:
 ```bash
 corepack pnpm install
 corepack pnpm --filter @noface/mobile dev
+cd apps/mobile
 npx eas login
 npx eas build --platform ios --profile production
 npx eas build --platform android --profile production
@@ -201,7 +202,7 @@ npx eas build --platform android --profile production
 - Feed and my-confession cards can now be shared as downloadable web cards and native mobile share cards.
 - My-confession delete is available in demo mode; live delete stays disabled until trusted identity or restore flows exist.
 - Private confessions can be saved from web and mobile; they stay out of the public feed and remain visible in My Confessions only.
-- Supabase now enforces server-side insert guardrails: blocked links and spam terms, plus a limit of 5 confessions per user in 10 minutes.
+- Noface now applies client-side moderation preflight plus Supabase server-side insert guardrails: blocked links and spam terms, plus a limit of 5 confessions per user in 10 minutes.
 - Premium filter preview is now available on web and mobile for the public feed, with mood-match plus short-read and long-read filters.
 - Premium filters are still a local preview only; billing, entitlement sync, and stronger moderation tooling are left for the next phase.
 - Shared package tests, CI validation, and deployment scaffolding for Vercel plus Expo EAS are now included.

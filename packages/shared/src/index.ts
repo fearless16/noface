@@ -1,3 +1,8 @@
+import {
+  GENERATED_DEMO_CONFESSION_SEED_VERSION,
+  GENERATED_DEMO_CONFESSIONS
+} from "./demo-confessions.generated";
+
 export const MAX_CONFESSION_LENGTH = 500;
 export const FEED_PAGE_FETCH_SIZE = 100;
 
@@ -91,7 +96,8 @@ export const STORAGE_KEYS = {
   userId: "noface.user-id",
   username: "noface.username",
   confessions: "noface.confessions",
-  demoSeeded: "noface.demo-seeded"
+  demoSeeded: "noface.demo-seeded",
+  demoSeedVersion: "noface.demo-seed-version"
 } as const;
 
 export const BLOCKED_CONFESSION_TERMS = [
@@ -457,80 +463,9 @@ export function toRow(confession: Confession): ConfessionRow {
   };
 }
 
-export const DEMO_CONFESSIONS: Confession[] = [
-  {
-    id: "demo-1",
-    userId: "anon-demo",
-    text: "I keep pretending I am fine at work because I do not want anyone to think I am falling behind.",
-    mood: "anxious",
-    isPrivate: false,
-    createdAt: "2026-04-24T23:42:00.000Z",
-    source: "local"
-  },
-  {
-    id: "demo-2",
-    userId: "anon-demo",
-    text: "Today was the first day in months that I felt genuinely hopeful about starting over.",
-    mood: "hopeful",
-    isPrivate: false,
-    createdAt: "2026-04-24T21:10:00.000Z",
-    source: "local"
-  },
-  {
-    id: "demo-3",
-    userId: "anon-demo",
-    text: "I still replay one conversation from years ago and wish I had said the kinder thing.",
-    mood: "regret",
-    isPrivate: false,
-    createdAt: "2026-04-24T18:05:00.000Z",
-    source: "local"
-  },
-  {
-    id: "demo-4",
-    userId: "anon-demo",
-    text: "I smiled through dinner and nodded at all the right times, but the whole evening I wanted to admit I am exhausted and scared of disappointing everyone.",
-    mood: "sad",
-    isPrivate: false,
-    createdAt: "2026-04-24T16:34:00.000Z",
-    source: "local"
-  },
-  {
-    id: "demo-5",
-    userId: "anon-demo",
-    text: "I keep drafting the resignation email and then closing the laptop because staying feels impossible and leaving feels worse.",
-    mood: "angry",
-    isPrivate: false,
-    createdAt: "2026-04-24T13:12:00.000Z",
-    source: "local"
-  },
-  {
-    id: "demo-6",
-    userId: "anon-demo",
-    text: "Someone told me I looked lighter today and I did not say it was because I finally slept without replaying the worst month of my life.",
-    mood: "happy",
-    isPrivate: false,
-    createdAt: "2026-04-24T10:47:00.000Z",
-    source: "local"
-  },
-  {
-    id: "demo-7",
-    userId: "anon-demo",
-    text: "Every notification makes my chest tighten because I am waiting for news I cannot control and pretending that uncertainty has not taken over my whole week.",
-    mood: "anxious",
-    isPrivate: false,
-    createdAt: "2026-04-24T08:19:00.000Z",
-    source: "local"
-  },
-  {
-    id: "demo-8",
-    userId: "anon-demo",
-    text: "I am not healed yet, but I finally believe the version of me from six months ago would be proud that I kept going.",
-    mood: "hopeful",
-    isPrivate: false,
-    createdAt: "2026-04-24T06:05:00.000Z",
-    source: "local"
-  }
-];
+export const DEMO_CONFESSION_SEED_VERSION = GENERATED_DEMO_CONFESSION_SEED_VERSION;
+
+export const DEMO_CONFESSIONS: Confession[] = GENERATED_DEMO_CONFESSIONS as Confession[];
 
 function wrapText(text: string, maxLength: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);

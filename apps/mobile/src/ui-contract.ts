@@ -19,4 +19,4 @@ export const MOBILE_TOUCH_TARGETS = {
   inactiveTextColor: "#b7b7d4"
 };
 
-export const MOBILE_MIN_PUBLIC_DEMO_CONFESSIONS = 8;
+export const MOBILE_MIN_PUBLIC_DEMO_CONFESSIONS = 1000;

@@ -2,6 +2,7 @@ import {
   type Confession,
   type ConfessionDraft,
   DEMO_CONFESSIONS,
+  DEMO_CONFESSION_SEED_VERSION,
   FEED_PAGE_FETCH_SIZE,
   STORAGE_KEYS,
   createAnonymousUserId,
@@ -23,20 +24,33 @@ function readLocalConfessions(): Confession[] {
   }
 
   const raw = window.localStorage.getItem(STORAGE_KEYS.confessions);
-  const isSeeded = window.localStorage.getItem(STORAGE_KEYS.demoSeeded) === "true";
+  const storedSeedVersion = window.localStorage.getItem(STORAGE_KEYS.demoSeedVersion);
 
-  if (!raw && !isSeeded) {
+  if (!raw) {
     window.localStorage.setItem(STORAGE_KEYS.confessions, JSON.stringify(DEMO_CONFESSIONS));
     window.localStorage.setItem(STORAGE_KEYS.demoSeeded, "true");
+    window.localStorage.setItem(STORAGE_KEYS.demoSeedVersion, DEMO_CONFESSION_SEED_VERSION);
     return sortConfessionsDescending(DEMO_CONFESSIONS);
   }
 
-  if (!raw) {
-    return [];
+  const parsed = JSON.parse(raw) as Confession[];
+
+  if (storedSeedVersion === DEMO_CONFESSION_SEED_VERSION) {
+    return sortConfessionsDescending(parsed);
   }
 
-  const parsed = JSON.parse(raw) as Confession[];
-  return sortConfessionsDescending(parsed);
+  const existingIds = new Set(parsed.map((confession) => confession.id));
+  const missingSeedConfessions = DEMO_CONFESSIONS.filter((confession) => !existingIds.has(confession.id));
+  const mergedConfessions = sortConfessionsDescending([
+    ...parsed,
+    ...missingSeedConfessions
+  ]);
+
+  window.localStorage.setItem(STORAGE_KEYS.confessions, JSON.stringify(mergedConfessions));
+  window.localStorage.setItem(STORAGE_KEYS.demoSeeded, "true");
+  window.localStorage.setItem(STORAGE_KEYS.demoSeedVersion, DEMO_CONFESSION_SEED_VERSION);
+
+  return mergedConfessions;
 }
 
 function readPublicLocalConfessions(): Confession[] {

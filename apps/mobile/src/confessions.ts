@@ -4,6 +4,7 @@ import {
   type Confession,
   type ConfessionDraft,
   DEMO_CONFESSIONS,
+  DEMO_CONFESSION_SEED_VERSION,
   FEED_PAGE_FETCH_SIZE,
   STORAGE_KEYS,
   createAnonymousUserId,
@@ -26,41 +27,44 @@ const supabase =
     : null;
 
 async function readLocalConfessions(): Promise<Confession[]> {
-  const [raw, seeded] = await AsyncStorage.multiGet([
+  const [raw, _seeded, seedVersion] = await AsyncStorage.multiGet([
     STORAGE_KEYS.confessions,
-    STORAGE_KEYS.demoSeeded
+    STORAGE_KEYS.demoSeeded,
+    STORAGE_KEYS.demoSeedVersion
   ]);
 
   const storedConfessions = raw[1];
-  const isSeeded = seeded[1] === "true";
+  const storedSeedVersion = seedVersion[1];
 
-  if (!storedConfessions && !isSeeded) {
+  if (!storedConfessions) {
     await AsyncStorage.multiSet([
       [STORAGE_KEYS.confessions, JSON.stringify(DEMO_CONFESSIONS)],
-      [STORAGE_KEYS.demoSeeded, "true"]
+      [STORAGE_KEYS.demoSeeded, "true"],
+      [STORAGE_KEYS.demoSeedVersion, DEMO_CONFESSION_SEED_VERSION]
     ]);
 
     return sortConfessionsDescending(DEMO_CONFESSIONS);
   }
 
-  if (!storedConfessions) {
-    return [];
-  }
-
   const parsedConfessions = JSON.parse(storedConfessions) as Confession[];
-  const existingIds = new Set(parsedConfessions.map((confession) => confession.id));
-  const missingSeedConfessions = DEMO_CONFESSIONS.filter((confession) => !existingIds.has(confession.id));
 
-  if (missingSeedConfessions.length === 0) {
+  if (storedSeedVersion === DEMO_CONFESSION_SEED_VERSION) {
     return sortConfessionsDescending(parsedConfessions);
   }
+
+  const existingIds = new Set(parsedConfessions.map((confession) => confession.id));
+  const missingSeedConfessions = DEMO_CONFESSIONS.filter((confession) => !existingIds.has(confession.id));
 
   const mergedConfessions = sortConfessionsDescending([
     ...parsedConfessions,
     ...missingSeedConfessions
   ]);
 
-  await writeLocalConfessions(mergedConfessions);
+  await AsyncStorage.multiSet([
+    [STORAGE_KEYS.confessions, JSON.stringify(mergedConfessions)],
+    [STORAGE_KEYS.demoSeeded, "true"],
+    [STORAGE_KEYS.demoSeedVersion, DEMO_CONFESSION_SEED_VERSION]
+  ]);
 
   return mergedConfessions;
 }

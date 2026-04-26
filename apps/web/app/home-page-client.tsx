@@ -13,6 +13,7 @@ import {
   FEED_PAGE_FETCH_SIZE,
   type FeedFilter,
   type FeedFilters,
+  getConfessionModerationMessage,
   formatSecretId,
   formatConfessionDate,
   getFeedFilterLabel,
@@ -104,6 +105,7 @@ export default function HomePageClient({
 
     return currentMood;
   }, [feed]);
+  const composerModerationMessage = useMemo(() => getConfessionModerationMessage(text), [text]);
 
   async function loadNextFeedPage() {
     if (isLoadingFeedPage || !hasMoreFeed) {
@@ -656,8 +658,13 @@ export default function HomePageClient({
             <div className="composer-footer">
               <div>
                 <p className="helper">{text.trim().length}/{MAX_CONFESSION_LENGTH} characters</p>
+                {composerModerationMessage ? (
+                  <p className="error">{composerModerationMessage}</p>
+                ) : (
+                  <p className="helper">Links, handle drops, and promo phrases are filtered before publish.</p>
+                )}
                 {statusMessage ? <p className="status">{statusMessage}</p> : null}
-                {errorMessage ? <p className="error">{errorMessage}</p> : null}
+                {errorMessage && errorMessage !== composerModerationMessage ? <p className="error">{errorMessage}</p> : null}
               </div>
 
               <div>
@@ -665,7 +672,7 @@ export default function HomePageClient({
                   Cancel
                 </button>
                 <span style={{ display: "inline-block", width: 12 }} />
-                <button className="primary" disabled={isPending} type="submit">
+                <button className="primary" disabled={isPending || Boolean(composerModerationMessage)} type="submit">
                   {isPending ? "Posting..." : "Post confession"}
                 </button>
               </div>

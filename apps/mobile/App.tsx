@@ -30,6 +30,7 @@ import {
   type FeedFilters,
   formatSecretId,
   formatConfessionDate,
+  getConfessionModerationMessage,
   getFeedFilterLabel,
   isPremiumFeedFilter,
   type Mood,
@@ -137,6 +138,7 @@ export function AppContent() {
 
     return currentMood;
   }, [feed]);
+  const composerModerationMessage = useMemo(() => getConfessionModerationMessage(text), [text]);
 
   const loadNextFeedPage = useCallback(async () => {
     if (isLoadingFeedPage || !hasMoreFeed) {
@@ -702,10 +704,24 @@ export function AppContent() {
             </View>
 
             <Text style={styles.helperText}>{text.trim().length}/{MAX_CONFESSION_LENGTH} characters</Text>
+            {composerModerationMessage ? (
+              <Text style={styles.errorText}>{composerModerationMessage}</Text>
+            ) : (
+              <Text style={styles.helperText}>Links, handle drops, and promo phrases are filtered before publish.</Text>
+            )}
             {statusMessage ? <Text style={styles.statusText}>{statusMessage}</Text> : null}
-            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+            {errorMessage && errorMessage !== composerModerationMessage ? (
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            ) : null}
 
-            <Pressable onPress={handlePublish} style={styles.primaryButton}>
+            <Pressable
+              disabled={isSubmitting || Boolean(composerModerationMessage)}
+              onPress={handlePublish}
+              style={[
+                styles.primaryButton,
+                isSubmitting || composerModerationMessage ? styles.primaryButtonDisabled : null
+              ]}
+            >
               <Text style={styles.primaryButtonText}>{isSubmitting ? "Posting..." : "Post confession"}</Text>
             </Pressable>
           </ScrollView>
@@ -1247,6 +1263,9 @@ export const styles = StyleSheet.create({
     borderRadius: 3,
     backgroundColor: "#9d4edd",
     alignItems: "center"
+  },
+  primaryButtonDisabled: {
+    opacity: 0.45
   },
   secondaryButton: {
     alignSelf: "flex-start",

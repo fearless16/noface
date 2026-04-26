@@ -8,7 +8,6 @@ import {
   FlatList,
   Platform,
   Pressable,
-  SafeAreaView,
   Share,
   ScrollView,
   StatusBar,
@@ -18,6 +17,7 @@ import {
   TextInput,
   View
 } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { captureRef } from "react-native-view-shot";
 import {
   applyFeedFilters,
@@ -44,6 +44,11 @@ import {
   publishConfession,
   resolveAnonymousUserId
 } from "./src/confessions";
+import {
+  MOBILE_SCROLL_PROPS,
+  MOBILE_TOUCH_TARGETS,
+  MOBILE_WRITE_SCROLL_PROPS
+} from "./src/ui-contract";
 
 type ViewMode = "feed" | "write" | "mine";
 
@@ -66,10 +71,14 @@ export default function App() {
 
   if (!fontsLoaded) return null;
 
-  return <AppContent />;
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
 }
 
-function AppContent() {
+export function AppContent() {
   const [viewMode, setViewMode] = useState<ViewMode>("feed");
   const [userId, setUserId] = useState("");
   const [feed, setFeed] = useState<Confession[]>([]);
@@ -339,7 +348,7 @@ function AppContent() {
   const visibleFeed = filteredFeed.slice(0, visibleCount);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={["top", "bottom"]} style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         <View style={styles.hero}>
@@ -496,6 +505,9 @@ function AppContent() {
             </Text>
 
             <FlatList
+              alwaysBounceVertical={MOBILE_SCROLL_PROPS.alwaysBounceVertical}
+              bounces={MOBILE_SCROLL_PROPS.bounces}
+              contentInsetAdjustmentBehavior={MOBILE_SCROLL_PROPS.contentInsetAdjustmentBehavior}
               style={styles.flex1}
               contentContainerStyle={styles.listContent}
               data={visibleFeed}
@@ -522,13 +534,20 @@ function AppContent() {
                 isLoadingFeedPage ? <Text style={styles.filterNote}>// loading more...</Text> : null
               }
               renderItem={renderCard}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={MOBILE_SCROLL_PROPS.showsVerticalScrollIndicator}
             />
           </View>
         ) : null}
 
         {viewMode === "write" ? (
-          <ScrollView style={styles.flex1} contentContainerStyle={styles.composePane} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            alwaysBounceVertical={MOBILE_WRITE_SCROLL_PROPS.alwaysBounceVertical}
+            bounces={MOBILE_WRITE_SCROLL_PROPS.bounces}
+            contentContainerStyle={styles.composePane}
+            keyboardShouldPersistTaps={MOBILE_WRITE_SCROLL_PROPS.keyboardShouldPersistTaps}
+            showsVerticalScrollIndicator={MOBILE_WRITE_SCROLL_PROPS.showsVerticalScrollIndicator}
+            style={styles.flex1}
+          >
             <Text style={styles.sectionTitle}>// write</Text>
             <Text style={styles.sectionSubtitle}>
               up to {MAX_CONFESSION_LENGTH} chars. nothing but your ghost id.
@@ -593,6 +612,9 @@ function AppContent() {
               </Text>
             ) : null}
             <FlatList
+              alwaysBounceVertical={MOBILE_SCROLL_PROPS.alwaysBounceVertical}
+              bounces={MOBILE_SCROLL_PROPS.bounces}
+              contentInsetAdjustmentBehavior={MOBILE_SCROLL_PROPS.contentInsetAdjustmentBehavior}
               style={styles.flex1}
               contentContainerStyle={styles.listContent}
               data={mine}
@@ -622,7 +644,7 @@ function AppContent() {
                   </View>
                 </View>
               )}
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={MOBILE_SCROLL_PROPS.showsVerticalScrollIndicator}
             />
           </View>
         ) : null}
@@ -660,7 +682,7 @@ function waitForNextFrame(): Promise<void> {
   });
 }
 
-const styles = StyleSheet.create({
+export const styles = StyleSheet.create({
   flex1: {
     flex: 1
   },
@@ -750,6 +772,10 @@ const styles = StyleSheet.create({
     marginVertical: 14
   },
   tab: {
+    flex: 1,
+    minHeight: MOBILE_TOUCH_TARGETS.tabMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderRadius: 3,
@@ -759,10 +785,15 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     backgroundColor: "#9d4edd",
-    borderColor: "#9d4edd"
+    borderColor: "#9d4edd",
+    shadowColor: "#9d4edd",
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3
   },
   tabText: {
-    color: "#4a4a6a",
+    color: MOBILE_TOUCH_TARGETS.inactiveTextColor,
     fontFamily: "SpaceMono_400Regular",
     fontSize: 11,
     textTransform: "uppercase",
@@ -780,7 +811,8 @@ const styles = StyleSheet.create({
     gap: 8
   },
   feedPane: {
-    flex: 1
+    flex: 1,
+    minHeight: 0
   },
   feedHeader: {
     marginBottom: 12,
@@ -794,7 +826,8 @@ const styles = StyleSheet.create({
     gap: 4
   },
   minePane: {
-    flex: 1
+    flex: 1,
+    minHeight: 0
   },
   card: {
     padding: 14,
@@ -867,6 +900,7 @@ const styles = StyleSheet.create({
     fontSize: 12
   },
   composePane: {
+    flexGrow: 1,
     paddingBottom: 32
   },
   sectionTitle: {
@@ -914,6 +948,9 @@ const styles = StyleSheet.create({
     marginBottom: 8
   },
   filterChip: {
+    minHeight: MOBILE_TOUCH_TARGETS.chipMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 8,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -930,13 +967,14 @@ const styles = StyleSheet.create({
     opacity: 0.28
   },
   filterChipText: {
-    color: "#4a4a6a",
+    color: MOBILE_TOUCH_TARGETS.inactiveTextColor,
     fontFamily: "SpaceMono_400Regular",
     fontSize: 11,
     textTransform: "uppercase"
   },
   activeFilterChipText: {
-    color: "#ffffff"
+    color: "#ffffff",
+    fontFamily: "SpaceMono_700Bold"
   },
   filterNote: {
     marginBottom: 10,
@@ -984,6 +1022,9 @@ const styles = StyleSheet.create({
     fontSize: 12
   },
   moodChip: {
+    minHeight: MOBILE_TOUCH_TARGETS.chipMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: 8,
     paddingHorizontal: 12,
     paddingVertical: 7,
@@ -997,14 +1038,14 @@ const styles = StyleSheet.create({
     borderColor: "#9d4edd"
   },
   moodChipText: {
-    color: "#4a4a6a",
+    color: MOBILE_TOUCH_TARGETS.inactiveTextColor,
     fontFamily: "SpaceMono_400Regular",
     fontSize: 12,
     textTransform: "capitalize"
   },
   selectedMoodText: {
     color: "#ffffff",
-    fontFamily: "SpaceMono_400Regular",
+    fontFamily: "SpaceMono_700Bold",
     fontSize: 12,
     textTransform: "capitalize"
   },
@@ -1034,6 +1075,9 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     alignSelf: "flex-start",
+    minHeight: MOBILE_TOUCH_TARGETS.actionButtonMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 3,
@@ -1047,13 +1091,16 @@ const styles = StyleSheet.create({
     fontFamily: "SpaceMono_700Bold"
   },
   secondaryButtonText: {
-    color: "#4a4a6a",
+    color: MOBILE_TOUCH_TARGETS.inactiveTextColor,
     fontFamily: "SpaceMono_400Regular",
     fontSize: 11
   },
   shareButton: {
     alignSelf: "flex-start",
     marginTop: 12,
+    minHeight: MOBILE_TOUCH_TARGETS.actionButtonMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 3,
@@ -1074,6 +1121,9 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     alignSelf: "flex-start",
+    minHeight: MOBILE_TOUCH_TARGETS.actionButtonMinHeight,
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 3,

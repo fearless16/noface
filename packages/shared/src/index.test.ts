@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   type Confession,
+  DEMO_CONFESSIONS,
   MAX_CONFESSION_LENGTH,
   MOOD_EMOJI,
   MOODS,
@@ -266,5 +267,21 @@ describe("MOOD_EMOJI", () => {
     expect(MOOD_EMOJI.happy).toBe("🖤");
     expect(MOOD_EMOJI.anxious).toBe("🕷️");
     expect(MOOD_EMOJI.hopeful).toBe("🌙");
+  });
+});
+
+describe("DEMO_CONFESSIONS", () => {
+  it("seeds enough public confessions to overflow the default mobile feed viewport", () => {
+    expect(DEMO_CONFESSIONS.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it("keeps all demo confessions public so the feed preview is populated", () => {
+    expect(DEMO_CONFESSIONS.every((confession) => confession.isPrivate === false)).toBe(true);
+  });
+
+  it("uses unique ids for every seeded confession", () => {
+    expect(new Set(DEMO_CONFESSIONS.map((confession) => confession.id)).size).toBe(
+      DEMO_CONFESSIONS.length
+    );
   });
 });

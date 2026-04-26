@@ -84,7 +84,7 @@ export function createAnonymousUserId(): string {
   };
 
   if (cryptoObject.crypto?.randomUUID) {
-    return cryptoObject.crypto.randomUUID();
+    return cryptoObject.crypto.randomUUID.call(cryptoObject.crypto);
   }
 
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (character) => {

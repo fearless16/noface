@@ -244,6 +244,8 @@ function AppContent() {
       console.error(error);
       setErrorMessage("Unable to share right now.");
       setStatusMessage(null);
+    } finally {
+      setSharingConfession(null);
     }
   }
 
@@ -491,6 +493,7 @@ function AppContent() {
             </Text>
 
             <FlatList
+              style={styles.flex1}
               contentContainerStyle={styles.listContent}
               data={visibleFeed}
               keyExtractor={(item) => item.id}
@@ -587,6 +590,7 @@ function AppContent() {
               </Text>
             ) : null}
             <FlatList
+              style={styles.flex1}
               contentContainerStyle={styles.listContent}
               data={mine}
               keyExtractor={(item) => item.id}
@@ -644,6 +648,9 @@ function waitForNextFrame(): Promise<void> {
 }
 
 const styles = StyleSheet.create({
+  flex1: {
+    flex: 1
+  },
   safeArea: {
     flex: 1,
     backgroundColor: "#07070f"
@@ -764,9 +771,13 @@ const styles = StyleSheet.create({
   },
   feedHeader: {
     marginBottom: 12,
-    gap: 10
+    gap: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start"
   },
   feedHeaderCopy: {
+    flex: 1,
     gap: 4
   },
   minePane: {
